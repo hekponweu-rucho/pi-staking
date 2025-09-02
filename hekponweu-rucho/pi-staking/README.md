@@ -6,7 +6,7 @@ Application React/Vite pour la plateforme de staking Pi.
 
 ### Prérequis
 
-- Node.js 18+ 
+- Node.js 18+
 - npm/yarn/pnpm
 - Backend API fonctionnel (Laravel/PHP)
 
@@ -37,149 +37,106 @@ cp .env.example .env
 # Configuration de l'API (obligatoire)
 VITE_API_BASE_URL=http://localhost:8000
 
-# Configuration optionnelle
-VITE_SENTRY_DSN=your-sentry-dsn-here
-VITE_ANALYTICS_ID=your-analytics-id-here
+# Optionnel
+VITE_SENTRY_DSN=
+VITE_ANALYTICS_ID=
 ```
 
 ### Démarrage du développement
 
-#### 1. Démarrer le backend (Laravel)
-
+1) Backend (Laravel)
 ```bash
-# Dans le dossier backend
-cd backend
-
-# Installer les dépendances PHP
-composer install
-
-# Configurer la base de données
 php artisan migrate --seed
-
-# Démarrer le serveur de développement
 php artisan serve --host=localhost --port=8000
 ```
 
-#### 2. Configurer CORS (Laravel)
-
-Assurez-vous que votre backend autorise les requêtes depuis `http://localhost:5173` (port Vite par défaut).
-
-Dans `config/cors.php` :
+2) CORS (Laravel)
 ```php
 'allowed_origins' => [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
 ],
 ```
 
-#### 3. Démarrer le frontend
-
+3) Frontend
 ```bash
-# Démarrer le serveur de développement Vite
 npm run dev
-# ou
-yarn dev
-# ou
-pnpm dev
 ```
 
-L'application sera accessible sur `http://localhost:5173`
+L'application sera accessible sur http://localhost:5173
+
+## 🧭 Navigation et routes
+
+- `/login` Connexion
+- `/register` Inscription
+- `/dashboard` Dashboard utilisateur (protégé)
+- `/staking` Offres de staking et création de position (protégé)
+
+Les routes protégées nécessitent une session valide. Le contexte d'authentification interroge `/api/auth/me` au chargement.
 
 ## 🛠 Fonctionnalités
 
-### Configuration robuste
-- Variables d'environnement optionnelles pour Sentry et Analytics
-- Configuration API unifiée avec fallback
-- Proxy Vite automatique pour `/api/*` → `http://localhost:8000`
-
-### Composants sécurisés
-- Dashboard utilisateur avec gestion d'erreurs
-- Sécurisation des opérations sur tableaux (reduce, map, filter)
-- États de chargement et d'erreur appropriés
-
-### Services API
-- Instance Axios unifiée avec intercepteurs
-- Services typés pour dashboard, staking, sécurité
-- Gestion d'erreurs centralisée
-
-## 🔧 Scripts disponibles
-
-```bash
-# Développement
-npm run dev
-
-# Build de production
-npm run build
-
-# Preview du build
-npm run preview
-
-# Linting
-npm run lint
-```
+- Configuration API unifiée avec fallback et proxy Vite `/api -> http://localhost:8000`
+- Sentry et Analytics optionnels et activés uniquement en production si configurés
+- Authentification: login, register, logout, récupération du profil `me`
+- Routes protégées avec redirections automatiques et états de chargement
+- Dashboard robuste avec garde-fous sur les données
 
 ## 📁 Structure du projet
 
 ```
 src/
-├── api/                    # Services API
-│   ├── api.ts             # Instance Axios principale
-│   ├── dashboardService.ts # Service dashboard
-│   ├── stakingService.ts   # Service staking
-│   └── securityService.ts  # Service sécurité
+├── api/
+│   ├── api.ts
+│   ├── authService.ts
+│   ├── dashboardService.ts
+│   ├── securityService.ts
+│   └── stakingService.ts
 ├── components/
+│   ├── common/
+│   │   └── Navbar.tsx
 │   └── dashboard/
 │       └── UserDashboardComplete.tsx
-├── config.ts              # Configuration centralisée
-├── main.tsx              # Point d'entrée
-├── App.tsx               # Composant principal
-└── index.css             # Styles de base
+├── context/
+│   └── AuthContext.tsx
+├── pages/
+│   ├── DashboardPage.tsx
+│   ├── Login.tsx
+│   ├── Register.tsx
+│   └── StakingPage.tsx
+├── routes/
+│   └── ProtectedRoute.tsx
+├── config.ts
+├── App.tsx
+├── index.css
+└── main.tsx
 ```
 
 ## 🐛 Correctifs appliqués
 
-Cette version corrige les erreurs suivantes :
-
-1. **Duplication 'isIFramePreview'** : Scripts CodeSandbox encapsulés dans IIFE
-2. **Variables manquantes** : VITE_ANALYTICS_ID et VITE_SENTRY_DSN rendues optionnelles
-3. **Erreurs API 500** : Configuration unifiée avec proxy Vite
-4. **Crash investments.reduce()** : Garde-fous et vérification des types
-5. **404 scout-tag.js** : Stub ajouté dans `/public/`
-
-## 🔒 Sécurité
-
-- Validation des données côté frontend
-- Gestion d'erreurs API appropriée
-- Variables d'environnement sensibles optionnelles
-- CORS configuré pour le développement
+1. Scripts CodeSandbox isolés (pas de redéclaration globale)
+2. Variables Analytics/Sentry optionnelles
+3. API unifiée via `VITE_API_BASE_URL` (fallback `VITE_API_URL`) + proxy Vite
+4. Garde-fous sur `investments.reduce()` et états fallback UI
+5. Stub `/public/scout-tag.js`
 
 ## 📝 Variables d'environnement
 
-| Variable | Obligatoire | Défaut | Description |
-|----------|-------------|--------|-------------|
-| `VITE_API_BASE_URL` | ✅ | `http://localhost:8000` | URL de base de l'API |
-| `VITE_API_URL` | ❌ | - | Alternative à API_BASE_URL |
-| `VITE_SENTRY_DSN` | ❌ | - | DSN Sentry (prod uniquement) |
-| `VITE_ANALYTICS_ID` | ❌ | - | ID Analytics (prod uniquement) |
+| Variable | Obligatoire | Défaut |
+|---------|-------------|--------|
+| VITE_API_BASE_URL | Oui | http://localhost:8000 |
+| VITE_API_URL | Non | — |
+| VITE_SENTRY_DSN | Non | — |
+| VITE_ANALYTICS_ID | Non | — |
 
 ## 🚨 Dépannage
 
-### Erreur CORS
-- Vérifiez que le backend autorise `http://localhost:5173`
-- Redémarrez le serveur backend après modification de la config CORS
+- CORS: autoriser `http://localhost:5173` côté backend
+- API 500/404: vérifier `VITE_API_BASE_URL` et le proxy Vite
+- Auth: endpoints attendus `/api/auth/login`, `/api/auth/register`, `/api/auth/me`, `/api/auth/logout`
 
-### API non accessible
-- Vérifiez que le backend fonctionne sur `http://localhost:8000`
-- Vérifiez la variable `VITE_API_BASE_URL` dans `.env`
+## 🔒 Sécurité
 
-### Erreurs TypeScript
-- Exécutez `npm run lint` pour identifier les problèmes
-- Vérifiez que tous les types sont correctement importés
-
-## 🤝 Contribution
-
-1. Forkez le projet
-2. Créez une branche feature (`git checkout -b feature/AmazingFeature`)
-3. Commitez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Pushez vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrez une Pull Request
+- Requêtes avec `withCredentials`
+- Aucune dépendance sensible committée
+- Sentry/Analytics désactivés sans variables
