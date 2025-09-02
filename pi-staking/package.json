@@ -1,0 +1,67 @@
+{
+  "name": "pi-staking-platform",
+  "version": "1.0.0",
+  "description": "Plateforme de staking progressive avec modèle économique viable",
+  "private": true,
+  "packageManager": "pnpm@8.15.0",
+  "scripts": {
+    "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:frontend\" \"pnpm dev:micro\"",
+    "dev:backend": "cd apps/backend && php artisan serve --host=0.0.0.0 --port=8000",
+    "dev:frontend": "cd apps/frontend && pnpm dev",
+    "dev:micro": "cd apps/microservice && pnpm dev",
+    "build": "pnpm build:shared && pnpm build:frontend && pnpm build:micro",
+    "build:shared": "cd packages/shared-types && pnpm build",
+    "build:frontend": "cd apps/frontend && pnpm build",
+    "build:micro": "cd apps/microservice && pnpm build",
+    "test": "pnpm test:backend && pnpm test:frontend && pnpm test:micro",
+    "test:backend": "cd apps/backend && php artisan test",
+    "test:frontend": "cd apps/frontend && pnpm test",
+    "test:micro": "cd apps/microservice && pnpm test",
+    "lint": "pnpm lint:frontend && pnpm lint:micro",
+    "lint:frontend": "cd apps/frontend && pnpm lint",
+    "lint:micro": "cd apps/microservice && pnpm lint",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
+    "db:fresh": "cd apps/backend && php artisan migrate:fresh --seed",
+    "db:migrate": "cd apps/backend && php artisan migrate",
+    "db:seed": "cd apps/backend && php artisan db:seed",
+    "monitoring:up": "docker-compose -f infrastructure/docker/monitoring.yml up -d",
+    "monitoring:down": "docker-compose -f infrastructure/docker/monitoring.yml down",
+    "setup": "pnpm install && pnpm db:fresh && echo 'Setup complete! Run pnpm dev to start development.'",
+    "clean": "pnpm -r exec rm -rf node_modules && rm -rf node_modules"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
+    "@types/node": "^20.10.5",
+    "concurrently": "^8.2.2",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/organization/pi-staking-platform.git"
+  },
+  "keywords": [
+    "pi-network",
+    "staking",
+    "defi",
+    "progressive-rewards",
+    "laravel",
+    "react",
+    "nodejs"
+  ],
+  "authors": [
+    "Pi Staking Team"
+  ],
+  "license": "PROPRIETARY"
+}

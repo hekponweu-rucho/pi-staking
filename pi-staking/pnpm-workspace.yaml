@@ -1,0 +1,28 @@
+# pnpm workspace configuration
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Shared dependencies hoisting
+shared-workspace-lockfile: true
+hoist: true
+
+# Peer dependency settings  
+auto-install-peers: true
+strict-peer-dependencies: false
+
+# Node.js version management
+use-node-version: "20.12.1"
+
+# Package resolution
+resolution-mode: "highest"
+
+# Filtering
+filter:
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**" 
+    - "**/build/**"
+
+# Scripts execution
+enable-pre-post-scripts: true

@@ -1,0 +1,203 @@
+version: '3.8'
+
+name: pi-staking-platform
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: pi_staking_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pi_staking_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pi_staking_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pi_staking_network
+
+  # Redis Cache/Queue/Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: pi_staking_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./infrastructure/docker/redis/redis.conf:/etc/redis/redis.conf:ro
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pi_staking_network
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: pi_staking_redis_gui
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+      HTTP_USER: admin
+      HTTP_PASSWORD: admin
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - pi_staking_network
+    profiles:
+      - tools
+
+  # pgAdmin (PostgreSQL GUI)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pi_staking_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@pistaking.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./infrastructure/docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      - postgres
+    networks:
+      - pi_staking_network
+    profiles:
+      - tools
+
+  # Prometheus (Metrics Collection)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pi_staking_prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/configs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/configs/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - pi_staking_network
+    profiles:
+      - monitoring
+
+  # Grafana (Dashboards & Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pi_staking_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: false
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource,redis-datasource
+    ports:
+      - "3003:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/configs/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./monitoring/configs/grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+    depends_on:
+      - prometheus
+    networks:
+      - pi_staking_network
+    profiles:
+      - monitoring
+
+  # Alertmanager (Prometheus Alerts)
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: pi_staking_alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/configs/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    depends_on:
+      - prometheus
+    networks:
+      - pi_staking_network
+    profiles:
+      - monitoring
+
+  # Nginx (Reverse Proxy & Load Balancer)
+  nginx:
+    image: nginx:alpine
+    container_name: pi_staking_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/docker/nginx/sites:/etc/nginx/sites-available:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - pi_staking_network
+    profiles:
+      - production
+
+  # Mailhog (Email Testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: pi_staking_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - pi_staking_network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  nginx_logs:
+    driver: local
+
+networks:
+  pi_staking_network:
+    driver: bridge
+    name: pi_staking_network

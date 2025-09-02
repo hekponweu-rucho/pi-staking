@@ -1,0 +1,44 @@
+{
+  "name": "@pi-staking/shared-types",
+  "version": "1.0.0",
+  "description": "Types TypeScript partagés pour la plateforme Pi Staking",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "format": "prettier --write 'src/**/*.ts'"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "prettier": "^3.1.1"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./user": {
+      "types": "./dist/user.d.ts", 
+      "default": "./dist/user.js"
+    },
+    "./investment": {
+      "types": "./dist/investment.d.ts",
+      "default": "./dist/investment.js"
+    },
+    "./financial": {
+      "types": "./dist/financial.d.ts",
+      "default": "./dist/financial.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
+    }
+  }
+}
