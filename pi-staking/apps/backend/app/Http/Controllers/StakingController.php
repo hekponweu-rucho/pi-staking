@@ -22,17 +22,17 @@ class StakingController extends Controller
      */
     public function getPackages(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $packages = $this->stakingService->getAvailablePackages($user);
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'packages' => $packages->toArray(),
+        try {
+            $user = $request->user();
+            $packages = $this->stakingService->getAvailablePackages($user);
+            return $this->success([
+                'packages' => $packages,
                 'user_level' => $user->current_level,
                 'level_info' => $this->userLevelService->getLevelProgress($user),
-            ]
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            return $this->exception($e, 'Erreur lors du chargement des packages');
+        }
     }
 
     /**
@@ -54,21 +54,14 @@ class StakingController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreurs de validation',
-                'errors' => $validator->errors()
-            ], 422);
+            return $this->fail('Erreurs de validation', 422, $validator->errors());
         }
 
         $user = $request->user();
         $package = StakingPackage::find($request->package_id);
         
         if (!$package) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Package de staking introuvable.'
-            ], 404);
+            return $this->fail('Package de staking introuvable.', 404);
         }
 
         try {
@@ -81,20 +74,13 @@ class StakingController extends Controller
 
             $investment->load('stakingPackage');
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Investissement créé avec succès !',
-                'data' => [
-                    'investment' => $investment,
-                    'user' => $user->fresh(['activeInvestments', 'bonusGrants']),
-                ]
-            ], 201);
+            return $this->success([
+                'investment' => $investment,
+                'user' => $user->fresh(['activeInvestments', 'bonusGrants']),
+            ], 'Investissement créé avec succès !', 201);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+        } catch (\Throwable $e) {
+            return $this->fail($e->getMessage(), 422);
         }
     }
 
