@@ -8,27 +8,33 @@ use Illuminate\Http\JsonResponse;
 class SecurityController extends Controller
 {
     /**
-     * Retourne les logs de sécurité (stub)
+     * Retourne les logs de sécurité récents
      */
     public function getSecurityLogs(Request $request): JsonResponse
     {
-        return response()->json([
-            'success' => true,
-            'logs' => [], // À remplacer par la vraie logique plus tard
-        ]);
+        try {
+            $user = $request->user();
+            $logs = \App\Models\UserSecurityLog::where('user_id', $user->id)
+                ->orderByDesc('created_at')
+                ->limit(50)
+                ->get();
+
+            return $this->success(['logs' => $logs]);
+        } catch (\Throwable $e) {
+            return $this->exception($e, 'Erreur lors de la récupération des logs de sécurité');
+        }
     }
 
     public function getSecurityStats(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $days = $request->query('days', 30); // Default to 30 days
-
-        $stats = \App\Models\UserSecurityLog::getSecurityStats($user->id, $days);
-        
-        return response()->json([
-            'success' => true,
-            'data' => $stats
-        ]);
+        try {
+            $user = $request->user();
+            $days = (int) $request->query('days', 30);
+            $stats = \App\Models\UserSecurityLog::getSecurityStats($user->id, $days);
+            return $this->success($stats, 'Statistiques de sécurité');
+        } catch (\Throwable $e) {
+            return $this->exception($e, 'Erreur lors de la récupération des statistiques de sécurité');
+        }
     }
 }
 

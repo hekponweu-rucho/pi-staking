@@ -26,89 +26,74 @@ class AdminController extends Controller
     public function getDashboardStats(): JsonResponse
     {
         try {
-            // Métriques générales
             $totalUsers = User::count();
             $activeUsers = User::where('last_activity', '>=', now()->subDays(30))->count();
             $newUsersToday = User::whereDate('created_at', today())->count();
             $newUsersThisWeek = User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
 
-            // Métriques financières
             $totalInvested = Investment::where('status', 'active')->sum('amount');
             $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
             $pendingClaims = Investment::where('status', 'active')
                 ->where('next_claim_available_at', '<=', now())
                 ->count();
             
-            // Calcul du TVL (Total Value Locked)
             $tvl = Investment::where('status', 'active')->sum('amount');
             $dailyVolume = Investment::whereDate('created_at', today())->sum('amount');
             
-            // Revenus de la plateforme (frais)
             $platformRevenue = $this->calculatePlatformRevenue();
-            
-            // Ratios de santé financière
             $liquidityRatio = $this->calculateLiquidityRatio();
             $claimRatio = $totalClaimed > 0 ? ($totalInvested / $totalClaimed) : 0;
 
-            // Alertes système
             $activeAlerts = SystemAlert::where('is_resolved', false)
                 ->where('severity', '!=', 'low')
                 ->count();
 
-            // Packages les plus populaires
             $popularPackages = StakingPackage::withCount('investments')
                 ->orderBy('investments_count', 'desc')
                 ->take(3)
                 ->get();
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'overview' => [
-                        'total_users' => $totalUsers,
-                        'active_users' => $activeUsers,
-                        'new_users_today' => $newUsersToday,
-                        'new_users_week' => $newUsersThisWeek,
-                        'active_users_percentage' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 1) : 0,
-                        'user_growth_rate' => $this->calculateUserGrowthRate(),
-                    ],
-                    'financial' => [
-                        'total_value_locked' => $tvl,
-                        'total_invested' => $totalInvested,
-                        'total_claimed' => $totalClaimed,
-                        'daily_volume' => $dailyVolume,
-                        'platform_revenue' => $platformRevenue,
-                        'pending_claims' => $pendingClaims,
-                        'pending_claims_amount' => $this->calculatePendingClaimsAmount(),
-                        'liquidity_ratio' => $liquidityRatio,
-                        'claim_ratio' => round($claimRatio, 2),
-                    ],
-                    'health_indicators' => [
-                        'liquidity_status' => $this->getLiquidityStatus($liquidityRatio),
-                        'platform_status' => $this->getPlatformStatus(),
-                        'active_alerts' => $activeAlerts,
-                        'system_load' => $this->getSystemLoad(),
-                    ],
-                    'popular_packages' => $popularPackages->map(function ($package) {
-                        return [
-                            'id' => $package->id,
-                            'name' => $package->name,
-                            'investments_count' => $package->investments_count,
-                            'daily_rate' => $package->daily_rate * 100,
-                            'total_invested' => Investment::where('package_id', $package->id)
-                                ->where('status', 'active')
-                                ->sum('amount'),
-                        ];
-                    }),
-                ]
-            ]);
+            return $this->success([
+                'overview' => [
+                    'total_users' => $totalUsers,
+                    'active_users' => $activeUsers,
+                    'new_users_today' => $newUsersToday,
+                    'new_users_week' => $newUsersThisWeek,
+                    'active_users_percentage' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 1) : 0,
+                    'user_growth_rate' => $this->calculateUserGrowthRate(),
+                ],
+                'financial' => [
+                    'total_value_locked' => $tvl,
+                    'total_invested' => $totalInvested,
+                    'total_claimed' => $totalClaimed,
+                    'daily_volume' => $dailyVolume,
+                    'platform_revenue' => $platformRevenue,
+                    'pending_claims' => $pendingClaims,
+                    'pending_claims_amount' => $this->calculatePendingClaimsAmount(),
+                    'liquidity_ratio' => $liquidityRatio,
+                    'claim_ratio' => round($claimRatio, 2),
+                ],
+                'health_indicators' => [
+                    'liquidity_status' => $this->getLiquidityStatus($liquidityRatio),
+                    'platform_status' => $this->getPlatformStatus(),
+                    'active_alerts' => $activeAlerts,
+                    'system_load' => $this->getSystemLoad(),
+                ],
+                'popular_packages' => $popularPackages->map(function ($package) {
+                    return [
+                        'id' => $package->id,
+                        'name' => $package->name,
+                        'investments_count' => $package->investments_count,
+                        'daily_rate' => $package->daily_rate * 100,
+                        'total_invested' => Investment::where('package_id', $package->id)
+                            ->where('status', 'active')
+                            ->sum('amount'),
+                    ];
+                }),
+            ], 'Stats admin');
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la récupération des statistiques admin',
-                'error' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+        } catch (\Throwable $e) {
+            return $this->exception($e, 'Erreur lors de la récupération des statistiques admin');
         }
     }
 
