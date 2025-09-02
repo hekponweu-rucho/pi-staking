@@ -1,50 +1,32 @@
-// Configuration de l'API
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-
-// Types d'erreurs API
-export interface ApiError {
-  success: false;
-  message: string;
-  errors?: Record<string, string[]>;
-}
-
-export interface ApiSuccess<T = any> {
-  success: true;
-  data: T;
-  message?: string;
-}
-
-export type ApiResponse<T = any> = ApiSuccess<T> | ApiError;
-
-// Configuration Axios
 import axios from 'axios';
+import { config } from './config';
+
+export const API_BASE_URL = (config.api.baseUrl || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000') + (config.api.prefix || '/api');
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   },
+  timeout: 10000
 });
 
-// Intercepteur pour ajouter le token d'authentification
-apiClient.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((cfg) => {
   const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  return cfg;
 });
 
-// Intercepteur pour gérer les réponses et erreurs
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expiré, rediriger vers la connexion
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.location.href = '/connexion';
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
