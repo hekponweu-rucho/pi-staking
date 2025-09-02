@@ -2,11 +2,9 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -19,9 +17,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
-a:hover {
-  color: #535bf2;
-}
+a:hover { color: #535bf2; }
 
 body {
   margin: 0;
@@ -31,10 +27,7 @@ body {
   min-height: 100vh;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+h1 { font-size: 3.2em; line-height: 1.1; }
 
 button {
   border-radius: 8px;
@@ -48,31 +41,33 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
+button:hover { border-color: #646cff; }
+button:focus, button:focus-visible { outline: 4px auto -webkit-focus-ring-color; }
 
 .app-header {
   text-align: center;
   padding: 2rem 0;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
+.app-header h1 { margin: 0; font-size: 2.0rem; }
 
-.app-header h1 {
-  margin: 0;
-  font-size: 2.5rem;
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #333;
+  background: rgba(0,0,0,0.2);
 }
+.navbar .brand { font-weight: 700; margin-right: 1rem; }
+.navbar .navlink { margin-right: 0.75rem; color: inherit; opacity: 0.8; }
+.navbar .navlink.active { opacity: 1; text-decoration: underline; }
+.navbar .user-badge { margin-right: 0.75rem; opacity: 0.9; }
 
-.app-main {
-  flex: 1;
-  padding: 0 1rem;
-}
+.app-main { flex: 1; padding: 1rem; width: 100%; max-width: 1200px; margin: 0 auto; }
 
 .app-footer {
   text-align: center;
@@ -82,21 +77,25 @@ button:focus-visible {
   color: #666;
 }
 
+.auth-container { max-width: 420px; margin: 2rem auto; background: #f8f9fa; color: #213547; padding: 1.5rem; border-radius: 8px; }
+.auth-container h2 { margin-top: 0; }
+.auth-form { display: grid; gap: 0.75rem; }
+.auth-form input { padding: 0.6rem 0.8rem; border: 1px solid #ccc; border-radius: 6px; }
+.auth-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 0.5rem 0.75rem; border-radius: 6px; }
+.auth-alt { margin-top: 0.75rem; text-align: center; }
+
+.staking-page { max-width: 1000px; margin: 0 auto; }
+.packages-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.package-card { background: #f8f9fa; color: #213547; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; }
+.alert { padding: 10px 12px; border-radius: 6px; margin: 10px 0; }
+.alert.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+.alert.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+.empty-state { padding: 24px; text-align: center; opacity: 0.8; }
+
 @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-    color: #213547;
-  }
-  
-  .app-footer {
-    border-top-color: #e0e0e0;
-    color: #666;
-  }
+  :root { color: #213547; background-color: #ffffff; }
+  a:hover { color: #747bff; }
+  button { background-color: #f9f9f9; color: #213547; }
+  .app-footer { border-top-color: #e0e0e0; color: #666; }
+  .navbar { background: #fff; border-bottom-color: #e9ecef; }
 }
