@@ -36,7 +36,7 @@ class AdminController extends Controller
             $totalInvested = Investment::where('status', 'active')->sum('amount');
             $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
             $pendingClaims = Investment::where('status', 'active')
-                ->where('next_claim_available_at', '<=', now())
+                ->where('next_claim_at', '<=', now())
                 ->count();
             
             // Calcul du TVL (Total Value Locked)
@@ -95,7 +95,7 @@ class AdminController extends Controller
                             'name' => $package->name,
                             'investments_count' => $package->investments_count,
                             'daily_rate' => $package->daily_rate * 100,
-                            'total_invested' => Investment::where('package_id', $package->id)
+                            'total_invested' => Investment::where('staking_package_id', $package->id)
                                 ->where('status', 'active')
                                 ->sum('amount'),
                         ];
@@ -355,12 +355,12 @@ class AdminController extends Controller
     {
         // Calcul des revenus basé sur les frais de dépôt et de performance
         $depositFees = Investment::where('status', 'active')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
+            ->join('staking_packages', 'investments.staking_package_id', '=', 'staking_packages.id')
             ->sum(DB::raw('investments.amount * staking_packages.deposit_fee_rate'));
 
         $performanceFees = Claim::where('status', 'completed')
             ->join('investments', 'claims.investment_id', '=', 'investments.id')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
+            ->join('staking_packages', 'investments.staking_package_id', '=', 'staking_packages.id')
             ->sum(DB::raw('claims.final_amount * staking_packages.performance_fee_rate'));
 
         return $depositFees + $performanceFees;
@@ -380,9 +380,9 @@ class AdminController extends Controller
     private function calculatePendingClaimsAmount(): float
     {
         return Investment::where('status', 'active')
-            ->where('next_claim_available_at', '<=', now())
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('investments.amount * investments.effective_rate'));
+            ->where('next_claim_at', '<=', now())
+            ->join('staking_packages', 'investments.staking_package_id', '=', 'staking_packages.id')
+            ->sum(DB::raw('investments.amount * investments.daily_rate'));
     }
 
     private function calculateUserGrowthRate(): float
@@ -499,8 +499,8 @@ class AdminController extends Controller
         return $dates->map(function ($date) use ($claims, $revenue) {
             return [
                 'date' => $date,
-                'claims' => floatval($claims[$date]->claims ?? 0),
-                'revenue' => floatval($revenue[$date]->revenue ?? 0)
+                'claims' => floatval(optional($claims->get($date))->claims ?? 0),
+                'revenue' => floatval(optional($revenue->get($date))->revenue ?? 0)
             ];
         })->toArray();
     }
@@ -529,7 +529,7 @@ class AdminController extends Controller
             ->map(function ($package) {
                 $totalInvested = $package->investments->sum('amount');
                 $totalClaims = Claim::whereHas('investment', function ($query) use ($package) {
-                    $query->where('package_id', $package->id);
+                    $query->where('staking_package_id', $package->id);
                 })->where('status', 'completed')->sum('final_amount');
 
                 return [

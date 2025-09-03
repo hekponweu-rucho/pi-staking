@@ -230,6 +230,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     });
   };
 
+  const normalizedPackages = Array.isArray(packages) ? packages : (packages as any)?.packages || [];
   const calculatedTotalInvested = investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0;
   const totalEarnings = investments?.reduce((sum, inv) => sum + (inv.total_earned || 0), 0) || 0;
   const totalClaimable = claimableInvestments?.reduce((sum, inv) => sum + (inv.claimable_amount || 0), 0) || 0;
@@ -492,7 +493,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 <CardContent>
                   {investments ? (
                     <div className="space-y-4">
-                      {(Array.isArray(packages) ? packages : (packages as any)?.packages || []).map((pkg: any) => {
+                      {normalizedPackages.map((pkg: any) => {
                         const pkgInvestments = investments.filter(inv => inv.package?.id === pkg.id);
                         const pkgTotal = pkgInvestments.reduce((sum, inv) => sum + inv.amount, 0);
                         const percentage = calculatedTotalInvested > 0 ? (pkgTotal / calculatedTotalInvested) * 100 : 0;
@@ -530,7 +531,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
             {/* Packages disponibles */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {packages?.map((pkg) => (
+              {normalizedPackages.map((pkg: any) => (
                 <GlowCard key={pkg.id} className="cursor-pointer hover:scale-105 transition-transform">
                   <CardHeader>
                     <div className="flex justify-between items-start">
