@@ -490,15 +490,13 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {packages && investments ? (
+                  {investments ? (
                     <div className="space-y-4">
-                      {packages.map(pkg => {
+                      {(Array.isArray(packages) ? packages : (packages as any)?.packages || []).map((pkg: any) => {
                         const pkgInvestments = investments.filter(inv => inv.package?.id === pkg.id);
                         const pkgTotal = pkgInvestments.reduce((sum, inv) => sum + inv.amount, 0);
                         const percentage = calculatedTotalInvested > 0 ? (pkgTotal / calculatedTotalInvested) * 100 : 0;
-                        
                         if (percentage === 0) return null;
-                        
                         return (
                           <div key={pkg.id} className="space-y-2">
                             <div className="flex justify-between items-center">

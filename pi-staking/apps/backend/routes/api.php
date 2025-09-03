@@ -60,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/invest', [StakingController::class, 'createInvestment']);
         Route::get('/investments', [StakingController::class, 'getUserInvestments']);
         Route::get('/investment/{id}', [StakingController::class, 'getInvestmentDetails']);
-        Route::post('/calculate-earnings', [StakingController::class, 'calculateEarnings']);
+        Route::post('/calculate-earnings', [StakingController::class, 'calculatePotentialEarnings']);
         Route::get('/performance', [StakingController::class, 'getPerformanceHistory']);
     });
 
