@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StakingPackage } from '../../../packages/shared-types/src/investment';
+import type { StakingPackage } from '@shared/investment';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -104,8 +104,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const [selectedPackage, setSelectedPackage] = useState<StakingPackage | null>(null);
 
   // État pour les formulaires
-  const [investmentForm, setInvestmentForm] = useState({
-    package_id: '',
+  const [investmentForm, setInvestmentForm] = useState<{ package_id: number | null; amount: string }>({
+    package_id: null,
     amount: ''
   });
   const [withdrawalForm, setWithdrawalForm] = useState({
@@ -158,10 +158,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     if (!selectedPackage || !investmentForm.amount) return;
     
     try {
-      await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount));
+      await createInvestment(selectedPackage.id, parseFloat(investmentForm.amount));
       
       setShowInvestModal(false);
-      setInvestmentForm({ package_id: '', amount: '' });
+      setInvestmentForm({ package_id: null, amount: '' });
       await refreshAllData();
     } catch (error) {
       console.error('Erreur investissement:', error);

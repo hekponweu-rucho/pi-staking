@@ -1,5 +1,5 @@
 import apiClient, { sanctumClient } from '@/lib/api-enhanced';
-import type { User } from '../../../packages/shared-types/src/user.ts';
+import type { User } from '@shared/user';
 
 export interface LoginCredentials {
   email: string;

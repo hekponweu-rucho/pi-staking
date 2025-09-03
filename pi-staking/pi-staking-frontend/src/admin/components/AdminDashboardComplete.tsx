@@ -241,7 +241,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
   const loadPackages = async () => {
     try {
       const response = await stakingService.getPackages();
-      setPackages(response.data || []);
+      setPackages(response.packages || []);
     } catch (error) {
       console.error('Erreur chargement packages:', error);
     }

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { authService, LoginCredentials, RegisterCredentials } from '../services/authService';
 import { securityService, TwoFactorStatus, AccountSecurityStatus } from '../services/securityService';
 import { emailVerificationService, EmailVerificationResponse } from '../services/emailVerificationService';
-import type { User } from '../../../packages/shared-types/src/user.ts';
+import type { User } from '@shared/user';
 
 // Types pour l'état d'authentification
 interface AuthState {

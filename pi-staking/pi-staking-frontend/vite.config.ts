@@ -20,9 +20,13 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@shared": path.resolve(__dirname, "../packages/shared-types/src"),
     },
   },
   server: {
+    fs: {
+      allow: [path.resolve(__dirname, "..")]
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

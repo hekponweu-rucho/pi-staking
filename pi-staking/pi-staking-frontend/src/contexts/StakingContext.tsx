@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { stakingService, StakingPackage, Investment, PerformanceData } from '../services/stakingService';
+import { stakingService, Investment, PerformanceData } from '../services/stakingService';
+import type { StakingPackage } from '@shared/investment';
 import { claimsService, ClaimableInvestment, ClaimStatistics, ClaimHistory } from '../services/claimsService';
 import { useAuth } from './AuthContext';
 
@@ -49,7 +50,7 @@ type StakingAction =
   | { type: 'SET_INVESTMENTS'; payload: Investment[] }
   | { type: 'SET_INVESTMENTS_LOADING'; payload: boolean }
   | { type: 'ADD_INVESTMENT'; payload: Investment }
-  | { type: 'UPDATE_INVESTMENT'; payload: { id: string; updates: Partial<Investment> } }
+  | { type: 'UPDATE_INVESTMENT'; payload: { id: number; updates: Partial<Investment> } }
   | { type: 'SET_CLAIMABLE_INVESTMENTS'; payload: ClaimableInvestment[] }
   | { type: 'SET_CLAIMABLE_LOADING'; payload: boolean }
   | { type: 'SET_CLAIM_HISTORY'; payload: ClaimHistory[] }
@@ -211,9 +212,9 @@ interface StakingContextType {
   
   // Actions des investissements
   loadInvestments: () => Promise<void>;
-  createInvestment: (packageId: string, amount: number) => Promise<boolean>;
-  getInvestmentDetails: (investmentId: string) => Promise<any>;
-  calculateEarnings: (packageId: string, amount: number, duration?: number) => Promise<any>;
+  createInvestment: (packageId: number, amount: number, source?: 'funds' | 'bonus') => Promise<boolean>;
+  getInvestmentDetails: (investmentId: number) => Promise<any>;
+  calculateEarnings: (packageId: number, amount: number, duration?: number) => Promise<any>;
   
   // Actions des réclamations
   loadClaimableInvestments: () => Promise<void>;
@@ -232,8 +233,8 @@ interface StakingContextType {
   clearError: () => void;
   
   // Getters calculés
-  getPackageById: (id: string) => StakingPackage | undefined;
-  getInvestmentById: (id: string) => Investment | undefined;
+  getPackageById: (id: number) => StakingPackage | undefined;
+  getInvestmentById: (id: number) => Investment | undefined;
   getClaimableByInvestmentId: (investmentId: string) => ClaimableInvestment | undefined;
   getTotalROI: () => number;
   getAverageDailyReturn: () => number;
@@ -299,13 +300,8 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   const loadPackages = async (): Promise<void> => {
     try {
       dispatch({ type: 'SET_PACKAGES_LOADING', payload: true });
-      const response = await stakingService.getPackages();
-      
-      if (response.success) {
-        dispatch({ type: 'SET_PACKAGES', payload: response.data });
-      } else {
-        throw new Error('Erreur de chargement des packages');
-      }
+      const { packages } = await stakingService.getPackages();
+      dispatch({ type: 'SET_PACKAGES', payload: packages });
     } catch (error) {
       console.error('Erreur lors du chargement des packages:', error);
       dispatch({ type: 'SET_ERROR', payload: 'Erreur de chargement des packages' });
@@ -334,15 +330,18 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   };
 
   // Créer un investissement
-  const createInvestment = async (packageId: string, amount: number): Promise<boolean> => {
+  const createInvestment = async (
+    packageId: number,
+    amount: number,
+    source: 'funds' | 'bonus' = 'funds'
+  ): Promise<boolean> => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await stakingService.createInvestment(packageId, amount);
+      const response = await stakingService.createInvestment(packageId, amount, source);
       
       if (response.success) {
         dispatch({ type: 'ADD_INVESTMENT', payload: response.data });
         
-        // Recharger les données liées
         await Promise.all([
           loadClaimableInvestments(),
           loadClaimStatistics()
@@ -354,7 +353,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
         return false;
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Erreur de création d\'investissement';
+      const message = error instanceof Error ? error.message : "Erreur de création d'investissement";
       dispatch({ type: 'SET_ERROR', payload: message });
       return false;
     } finally {
@@ -363,17 +362,16 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   };
 
   // Obtenir les détails d'un investissement
-  const getInvestmentDetails = async (investmentId: string) => {
+  const getInvestmentDetails = async (investmentId: number) => {
     try {
       const response = await stakingService.getInvestmentDetails(investmentId);
       if (response.success) {
-        // Mettre à jour l'investissement dans l'état
         dispatch({
           type: 'UPDATE_INVESTMENT',
           payload: {
             id: investmentId,
-            updates: response.data
-          }
+            updates: response.data,
+          },
         });
         return response.data;
       } else {
@@ -386,7 +384,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   };
 
   // Calculer les gains
-  const calculateEarnings = async (packageId: string, amount: number, duration?: number) => {
+  const calculateEarnings = async (packageId: number, amount: number, duration?: number) => {
     try {
       const response = await stakingService.calculateEarnings(packageId, amount, duration);
       return response.success ? response.data : null;
@@ -588,11 +586,11 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   };
 
   // Getters calculés
-  const getPackageById = (id: string): StakingPackage | undefined => {
+  const getPackageById = (id: number): StakingPackage | undefined => {
     return state.packages.find(pkg => pkg.id === id);
   };
 
-  const getInvestmentById = (id: string): Investment | undefined => {
+  const getInvestmentById = (id: number): Investment | undefined => {
     return state.investments.find(inv => inv.id === id);
   };
 
