@@ -10,6 +10,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\AdminDepositController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminWithdrawalController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
@@ -323,6 +324,13 @@ Route::middleware('auth:sanctum')->group(function () {
             $transaction = \App\Models\Transaction::findOrFail($transactionId);
             $transaction->update(['status' => request('status')]);
             return response()->json(['success' => true, 'data' => $transaction]);
+        });
+
+        // Retraits (administration)
+        Route::prefix('withdrawals')->group(function () {
+            Route::get('/', [AdminWithdrawalController::class, 'list']);
+            Route::post('/{id}/complete', [AdminWithdrawalController::class, 'complete']);
+            Route::post('/{id}/reject', [AdminWithdrawalController::class, 'reject']);
         });
 
         // Dépôts (administration)
