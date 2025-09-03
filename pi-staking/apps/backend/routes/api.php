@@ -7,7 +7,10 @@ use App\Http\Controllers\StakingController;
 use App\Http\Controllers\ClaimController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\DepositController;
+use App\Http\Controllers\AdminDepositController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminWithdrawalController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
@@ -82,6 +85,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/search', [TransactionController::class, 'searchTransactions']);
         Route::get('/{id}', [TransactionController::class, 'getTransactionById']);
         Route::post('/export', [TransactionController::class, 'exportTransactions']);
+
+        // Dépôts (sessions)
+        Route::post('/deposits/session', [DepositController::class, 'startDepositSession']);
+        Route::get('/deposits/session/{id}', [DepositController::class, 'getDepositSessionStatus']);
+        Route::post('/deposits/session/{id}/cancel', [DepositController::class, 'cancelDepositSession']);
         
         // Retrait avec vérifications de sécurité
         Route::post('/withdrawal', [TransactionController::class, 'createWithdrawal'])
@@ -313,6 +321,28 @@ Route::middleware('auth:sanctum')->group(function () {
         // Monitoring des transactions
         Route::get('/transactions', [AdminController::class, 'getTransactions']);
         Route::patch('/transactions/{transaction}/status', function($transactionId) {
+            $transaction = \App\Models\Transaction::findOrFail($transactionId);
+            $transaction->update(['status' => request('status')]);
+            return response()->json(['success' => true, 'data' => $transaction]);
+        });
+
+        // Retraits (administration)
+        Route::prefix('withdrawals')->group(function () {
+            Route::get('/', [AdminWithdrawalController::class, 'list']);
+            Route::post('/{id}/complete', [AdminWithdrawalController::class, 'complete']);
+            Route::post('/{id}/reject', [AdminWithdrawalController::class, 'reject']);
+        });
+
+        // Dépôts (administration)
+        Route::prefix('deposits')->group(function () {
+            Route::get('/addresses', [AdminDepositController::class, 'listAddresses']);
+            Route::post('/addresses', [AdminDepositController::class, 'createAddress']);
+            Route::patch('/addresses/{id}', [AdminDepositController::class, 'updateAddress']);
+            Route::delete('/addresses/{id}', [AdminDepositController::class, 'deleteAddress']);
+
+            Route::get('/sessions', [AdminDepositController::class, 'listSessions']);
+            Route::post('/sessions/{id}/confirm', [AdminDepositController::class, 'confirmSession']);
+        });
             $transaction = \App\Models\Transaction::findOrFail($transactionId);
             $transaction->update(['status' => request('status')]);
             return response()->json(['success' => true, 'data' => $transaction]);

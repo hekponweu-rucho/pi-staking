@@ -18,7 +18,7 @@ class TransactionController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:20',
-            'withdrawal_address' => 'nullable|string|max:255',
+            'destination_address' => 'nullable|string|max:255',
             'note' => 'nullable|string|max:500',
         ], [
             'amount.required' => 'Le montant est requis.',
@@ -92,7 +92,7 @@ class TransactionController extends Controller
                     'user_id' => $user->id,
                     'amount' => $amount,
                     'status' => 'pending',
-                    'withdrawal_address' => $request->withdrawal_address,
+                    'destination_address' => $request->destination_address,
                     'note' => $request->note,
                     'requested_at' => now(),
                 ]);

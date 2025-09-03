@@ -70,6 +70,8 @@ import { stakingService } from '@/services/stakingService';
 
 // Import du dashboard de parrainage
 import { AdminReferralDashboard } from '@/components/AdminReferralDashboard';
+import AdminWithdrawalsManager from '@/admin/components/AdminWithdrawalsManager';
+import AdminDepositManager from '@/admin/components/AdminDepositManager';
 
 interface AdminDashboardCompleteProps {
   onLogout: () => void;
@@ -400,7 +402,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
       <div className="relative z-10 border-b border-border/50 bg-card/60 backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-9 h-14">
+            <TabsList className="grid w-full grid-cols-10 h-14">
               <TabsTrigger value="overview" className="flex flex-col items-center gap-1 text-xs">
                 <BarChart3 className="h-4 w-4" />
                 Vue d'ensemble
@@ -412,6 +414,10 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 text-xs">
                 <DollarSign className="h-4 w-4" />
                 Transactions
+              </TabsTrigger>
+              <TabsTrigger value="deposits" className="flex flex-col items-center gap-1 text-xs">
+                <Wallet className="h-4 w-4" />
+                Dépôts
               </TabsTrigger>
               <TabsTrigger value="packages" className="flex flex-col items-center gap-1 text-xs">
                 <Target className="h-4 w-4" />
@@ -428,6 +434,10 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               <TabsTrigger value="system" className="flex flex-col items-center gap-1 text-xs">
                 <Server className="h-4 w-4" />
                 Système
+              </TabsTrigger>
+              <TabsTrigger value="withdrawals" className="flex flex-col items-center gap-1 text-xs">
+                <Upload className="h-4 w-4" />
+                Retraits
               </TabsTrigger>
               <TabsTrigger value="alerts" className="flex flex-col items-center gap-1 text-xs">
                 <AlertTriangle className="h-4 w-4" />
@@ -775,6 +785,11 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
             </GlowCard>
           </TabsContent>
 
+          {/* Gestion Dépôts */}
+          <TabsContent value="deposits" className="space-y-6">
+            <AdminDepositManager />
+          </TabsContent>
+
           {/* Gestion Transactions */}
           <TabsContent value="transactions" className="space-y-6">
             <div className="flex justify-between items-center">
@@ -1070,6 +1085,11 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </div>
               </CardContent>
             </GlowCard>
+          </TabsContent>
+
+          {/* Gestion Retraits */}
+          <TabsContent value="withdrawals" className="space-y-6">
+            <AdminWithdrawalsManager />
           </TabsContent>
 
           {/* Gestion Parrainage */}
