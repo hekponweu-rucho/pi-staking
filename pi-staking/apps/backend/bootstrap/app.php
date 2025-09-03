@@ -15,6 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Enregistrer le middleware anti-abus
         $middleware->alias([
             'anti-abuse' => \App\Http\Middleware\AntiAbuseMiddleware::class,
+            'role' => \Spatie\Permission\Middlewares\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middlewares\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middlewares\RoleOrPermissionMiddleware::class,
         ]);
         
         // Appliquer Sanctum aux routes API
