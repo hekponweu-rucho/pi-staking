@@ -332,6 +332,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::patch('/addresses/{id}', [AdminDepositController::class, 'updateAddress']);
             Route::delete('/addresses/{id}', [AdminDepositController::class, 'deleteAddress']);
 
+            Route::get('/sessions', [AdminDepositController::class, 'listSessions']);
             Route::post('/sessions/{id}/confirm', [AdminDepositController::class, 'confirmSession']);
         });
             $transaction = \App\Models\Transaction::findOrFail($transactionId);

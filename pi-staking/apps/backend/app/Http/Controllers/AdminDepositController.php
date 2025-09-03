@@ -10,6 +10,21 @@ use Illuminate\Support\Facades\DB;
 
 class AdminDepositController extends Controller
 {
+    public function listSessions(Request $request)
+    {
+        $status = $request->query('status');
+        $query = DepositSession::with(['user:id,username,email', 'address:id,address,label'])
+            ->orderByDesc('created_at');
+        if ($status) {
+            $query->where('status', $status);
+        }
+        $sessions = $query->paginate($request->query('per_page', 20));
+        return response()->json([
+            'success' => true,
+            'data' => $sessions,
+        ]);
+    }
+
     public function listAddresses()
     {
         return response()->json([
