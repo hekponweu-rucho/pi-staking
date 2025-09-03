@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { GlowCard } from './GlowCard';
 import { AnimatedCounter } from './AnimatedCounter';
-import { stakingService, StakingPackage } from '@/services/stakingService';
+import { stakingService } from '@/services/stakingService';
+import type { StakingPackage } from '@shared/investment';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Loader2, 
@@ -55,13 +56,8 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
       setIsLoading(true);
       setError(null);
       
-      const response = await stakingService.getPackages();
-      
-      if (response.success && response.data) {
-        setPackages(response.data.filter(pkg => pkg.is_active));
-      } else {
-        setError(response.message || 'Erreur lors du chargement des packages');
-      }
+      const { packages } = await stakingService.getPackages();
+      setPackages(packages.filter(pkg => pkg.is_active));
     } catch (err) {
       setError('Erreur de connexion au serveur');
       console.error('Packages fetch error:', err);
@@ -90,10 +86,10 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
     setInvestment(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await stakingService.createInvestment({
-        amount: investment.amount,
-        package_id: investment.selectedPackage.id
-      });
+      const response = await stakingService.createInvestment(
+        investment.selectedPackage.id,
+        investment.amount
+      );
 
       if (response.success) {
         setInvestment(prev => ({ ...prev, step: 3, isLoading: false }));
