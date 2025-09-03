@@ -71,7 +71,7 @@ export function DashboardStats() {
           );
 
           const totalClaimed = claimStatsResponse.success ? 
-            claimStatsResponse.data.data.reduce((sum, claim) => sum + claim.amount, 0) : 0;
+            claimStatsResponse.data.claims.reduce((sum, claim) => sum + claim.amount, 0) : 0;
 
           setStats({
             totalBalance: dashboardData.user.balance_pi || 0,
