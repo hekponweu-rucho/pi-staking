@@ -49,6 +49,7 @@ import {
 
 // Import des contextes
 import { useAuth } from '../contexts/AuthContext';
+import { depositService } from '../services/depositService';
 import { useStaking } from '../contexts/StakingContext';
 import { useDashboard } from '../contexts/DashboardContext';
 
@@ -100,6 +101,12 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   // État pour les modales
   const [showInvestModal, setShowInvestModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+  const [isStartingDeposit, setIsStartingDeposit] = useState(false);
+  const [depositSession, setDepositSession] = useState<null | { id: string; address: string; memo: string; expires_at: string; confirmations_required: number }>(null);
+  const [depositStatus, setDepositStatus] = useState<null | { status: 'pending' | 'confirmed' | 'expired' | 'cancelled'; confirmations: number; credited_amount?: number }>(null);
+  const [depositPoll, setDepositPoll] = useState<ReturnType<typeof setInterval> | null>(null);
+  const [depositAmount, setDepositAmount] = useState('');
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<StakingPackage | null>(null);
 
@@ -406,7 +413,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </div>
 
             {/* Actions Rapides */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Button 
                 onClick={() => setActiveTab('staking')} 
                 className="h-16 pi-gradient text-white hover:pi-gradient-hover"
@@ -425,6 +432,17 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 <div className="flex flex-col items-center gap-2">
                   <Gift className="h-5 w-5" />
                   <span>Réclamer Tout ({claimableInvestments?.length || 0})</span>
+                </div>
+              </Button>
+
+              <Button 
+                onClick={() => setShowDepositModal(true)}
+                variant="outline" 
+                className="h-16"
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <Download className="h-5 w-5" />
+                  <span>Déposer des π</span>
                 </div>
               </Button>
 
@@ -1139,6 +1157,101 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
       </Dialog>
 
       {/* Modal de retrait */}
+      <Dialog open={showDepositModal} onOpenChange={(v)=>{setShowDepositModal(v); if(!v){ setDepositSession(null); setDepositStatus(null); if(depositPoll) clearInterval(depositPoll);}}}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dépôt de Pi</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!depositSession && (
+              <div className="space-y-3">
+                <Label>Montant (optionnel)</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 5.0"
+                  value={depositAmount}
+                  onChange={(e)=>setDepositAmount(e.target.value)}
+                />
+                <Button className="w-full" disabled={isStartingDeposit} onClick={async()=>{
+                  try{
+                    setIsStartingDeposit(true);
+                    const res = await depositService.startDepositSession(depositAmount ? parseFloat(depositAmount) : undefined);
+                    if(res.success){ setDepositSession(res.data); setDepositStatus({ status:'pending', confirmations:0 }); }
+                  }catch(err){ console.error(err); }
+                  finally{ setIsStartingDeposit(false); }
+                }}>
+                  {isStartingDeposit ? <Loader2 className="h-4 w-4 animate-spin mr-2"/>:null}
+                  Démarrer une session (30 min)
+                </Button>
+              </div>
+            )}
+
+            {depositSession && (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Adresse</p>
+                  <p className="font-mono break-all">{depositSession.address}</p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <p className="text-sm text-muted-foreground">Mémo</p>
+                  <p className="font-mono break-all">{depositSession.memo}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Format: U-{'{userId}'}-{'{ulid}'}</p>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Expire le:</span>
+                  <span>{formatDate(depositSession.expires_at)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Confirmations requises:</span>
+                  <span>{depositSession.confirmations_required}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={async()=>{
+                    if(!depositSession) return;
+                    const poll = setInterval(async()=>{
+                      try{
+                        const st = await depositService.getDepositStatus(depositSession.id);
+                        setDepositStatus(st.data);
+                        if(st.data.status === 'confirmed'){
+                          clearInterval(poll);
+                          await refreshAllData();
+                        }
+                        if(st.data.status === 'expired' || st.data.status === 'cancelled'){
+                          clearInterval(poll);
+                        }
+                      }catch(err){ console.error(err); }
+                    }, 5000);
+                    if(depositPoll) clearInterval(depositPoll);
+                    setDepositPoll(poll);
+                  }}>
+                    J'ai envoyé, vérifier
+                  </Button>
+
+                  <Button variant="destructive" onClick={async()=>{
+                    try{ if(depositSession) await depositService.cancelDepositSession(depositSession.id);}catch(err){console.error(err);} finally{ setDepositSession(null); setDepositStatus(null); if(depositPoll) clearInterval(depositPoll);} 
+                  }}>
+                    Annuler
+                  </Button>
+                </div>
+
+                {depositStatus && (
+                  <div className="text-sm text-muted-foreground">
+                    Statut: <span className="font-medium capitalize">{depositStatus.status}</span>{' '}
+                    {depositStatus.status === 'pending' && (
+                      <>• Confirmations: {depositStatus.confirmations}/{depositSession.confirmations_required}</>
+                    )}
+                    {depositStatus.credited_amount != null && (
+                      <> • Crédité: {formatCurrency(depositStatus.credited_amount)} π</>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
