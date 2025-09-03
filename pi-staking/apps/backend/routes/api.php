@@ -396,7 +396,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/financial', function() {
             $data = [
                 'total_tvl' => \App\Models\Investment::where('status', 'active')->sum('amount'),
-                'total_claimed' => \App\Models\Claim::where('status', 'completed')->sum('amount'),
+                'total_claimed' => \App\Models\Claim::where('status', 'completed')->sum('final_amount'),
                 'pending_claims' => \App\Models\Investment::where('status', 'active')
                     ->where('next_claim_at', '<=', now())->count(),
                 'daily_volume' => \App\Models\Investment::whereDate('created_at', today())->sum('amount'),
