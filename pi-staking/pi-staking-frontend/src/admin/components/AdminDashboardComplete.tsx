@@ -70,6 +70,7 @@ import { stakingService } from '@/services/stakingService';
 
 // Import du dashboard de parrainage
 import { AdminReferralDashboard } from '@/components/AdminReferralDashboard';
+import AdminWithdrawalsManager from '@/admin/components/AdminWithdrawalsManager';
 import AdminDepositManager from '@/admin/components/AdminDepositManager';
 
 interface AdminDashboardCompleteProps {
@@ -433,6 +434,10 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               <TabsTrigger value="system" className="flex flex-col items-center gap-1 text-xs">
                 <Server className="h-4 w-4" />
                 Système
+              </TabsTrigger>
+              <TabsTrigger value="withdrawals" className="flex flex-col items-center gap-1 text-xs">
+                <Upload className="h-4 w-4" />
+                Retraits
               </TabsTrigger>
               <TabsTrigger value="alerts" className="flex flex-col items-center gap-1 text-xs">
                 <AlertTriangle className="h-4 w-4" />
@@ -1080,6 +1085,11 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </div>
               </CardContent>
             </GlowCard>
+          </TabsContent>
+
+          {/* Gestion Retraits */}
+          <TabsContent value="withdrawals" className="space-y-6">
+            <AdminWithdrawalsManager />
           </TabsContent>
 
           {/* Gestion Parrainage */}
