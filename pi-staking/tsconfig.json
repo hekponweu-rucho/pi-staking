@@ -21,18 +21,9 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "useUnknownInCatchVariables": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["./packages/shared-types/src/*"],
-      "@ui/*": ["./packages/ui-components/src/*"],
-      "@monitoring/*": ["./packages/monitoring/src/*"],
-      "@backend/*": ["./apps/backend/*"],
-      "@frontend/*": ["./apps/frontend/src/*"],
-      "@microservice/*": ["./apps/microservice/src/*"]
+      "@shared/*": ["./packages/shared-types/src/*"]
     }
   },
   "include": [
@@ -50,9 +41,6 @@
   ],
   "references": [
     { "path": "./packages/shared-types" },
-    { "path": "./packages/ui-components" },
-    { "path": "./packages/monitoring" },
-    { "path": "./apps/frontend" },
-    { "path": "./apps/microservice" }
+    { "path": "./apps/frontend" }
   ]
 }

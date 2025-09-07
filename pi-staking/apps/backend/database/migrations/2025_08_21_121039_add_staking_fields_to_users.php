@@ -81,13 +81,7 @@ return new class extends Migration
                 $table->boolean('two_factor_enabled')->default(false)->after('email_verified_at');
             }
         });
-if (Schema::hasColumn('users', 'kyc_status')) {
-        DB::statement('ALTER TABLE users MODIFY kyc_status VARCHAR(20) DEFAULT "pending"');
-    }
-        // Corrige le type si besoin
-        if (Schema::hasColumn('users', 'two_factor_enabled')) {
-            DB::statement('ALTER TABLE users MODIFY two_factor_enabled TINYINT(1) DEFAULT 0');
-        }
+
     }
 
     /**

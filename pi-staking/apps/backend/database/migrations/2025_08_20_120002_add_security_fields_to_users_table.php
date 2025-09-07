@@ -71,19 +71,11 @@ return new class extends Migration
                 $table->timestamp('locked_until')->nullable()->after('failed_login_attempts');
             }
 
-            // Index (vérifie aussi leur existence)
-            if (!Schema::hasIndex('users', 'users_two_factor_enabled_index')) {
-                $table->index('two_factor_enabled', 'users_two_factor_enabled_index');
-            }
-            if (!Schema::hasIndex('users', 'users_phone_verified_index')) {
-                $table->index('phone_verified', 'users_phone_verified_index');
-            }
-            if (!Schema::hasIndex('users', 'users_last_activity_index')) {
-                $table->index('last_activity', 'users_last_activity_index');
-            }
-            if (!Schema::hasIndex('users', 'users_failed_login_locked_until_index')) {
-                $table->index(['failed_login_attempts', 'locked_until'], 'users_failed_login_locked_until_index');
-            }
+            // Index
+            $table->index('two_factor_enabled', 'users_two_factor_enabled_index');
+            $table->index('phone_verified', 'users_phone_verified_index');
+            $table->index('last_activity', 'users_last_activity_index');
+            $table->index(['failed_login_attempts', 'locked_until'], 'users_failed_login_locked_until_index');
         });
     }
 
