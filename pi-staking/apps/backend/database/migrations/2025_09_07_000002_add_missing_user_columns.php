@@ -33,11 +33,11 @@ return new class extends Migration
             if (!Schema::hasColumn('users', 'last_login_at')) {
                 $table->timestamp('last_login_at')->nullable()->after('last_activity');
             }
-            if (!Schema::hasColumn('users', 'timezone')) {
-                $table->string('timezone', 50)->nullable()->after('language');
-            }
             if (!Schema::hasColumn('users', 'language')) {
                 $table->string('language', 5)->nullable()->after('email');
+            }
+            if (!Schema::hasColumn('users', 'timezone')) {
+                $table->string('timezone', 50)->nullable()->after('language');
             }
         });
     }
