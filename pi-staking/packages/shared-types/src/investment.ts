@@ -35,9 +35,6 @@ export interface StakingPackage {
   is_active: boolean;
   requires_kyc: boolean;
   
-  // Fees
-  deposit_fee_rate: number;
-  performance_fee_rate: number;
   
   // Timestamps
   created_at: string;
@@ -47,7 +44,7 @@ export interface StakingPackage {
 export interface Investment {
   id: number;
   user_id: number;
-  package_id: number | null;
+  staking_package_id: number | null;
   
   // Amounts
   amount: number;
@@ -57,7 +54,6 @@ export interface Investment {
   user_level: UserLevel;
   base_rate: number;
   bonus_rate: number;
-  effective_rate: number;
   
   // Duration
   start_at: string;
@@ -69,7 +65,7 @@ export interface Investment {
   
   // Claims tracking
   last_claim_at: string | null;
-  next_claim_available_at: string | null;
+  next_claim_at: string | null;
   total_claims: number;
   
   // Relations
@@ -89,7 +85,7 @@ export interface Claim {
   
   // Claim details
   claimed_for_day: string;
-  amount: number;
+  final_amount: number;
   
   // Breakdown
   base_amount: number;
@@ -102,7 +98,7 @@ export interface Claim {
   streak_rate: number;
   
   // Status & metadata
-  status: 'completed' | 'failed' | 'cancelled';
+  status: 'processed' | 'failed' | 'cancelled';
   claimed_at: string;
   processed_at: string | null;
   ip_address: string | null;

@@ -10,9 +10,7 @@ export interface StakingPackage {
   min_amount: number;
   max_amount: number | null;
   max_duration_days: number;
-  deposit_fee_rate: number;
-  performance_fee_rate: number;
-  is_active: boolean;
+    is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -28,7 +26,7 @@ export interface Investment {
   status: 'active' | 'completed' | 'cancelled';
   started_at: string;
   ends_at: string;
-  next_claim_available_at: string;
+  next_claim_at: string;
   created_at: string;
   updated_at: string;
   package?: StakingPackage;

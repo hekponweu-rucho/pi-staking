@@ -431,7 +431,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
           investment_id: investmentId,
           amount: response.data.amount,
           claimed_at: new Date().toISOString(),
-          status: 'completed',
+          status: 'processed',
           transaction_hash: response.data.transaction_hash,
           investment: {
             id: investmentId,
@@ -618,7 +618,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   const getNextClaimTime = (): Date | null => {
     const nextClaimDates = state.claimableInvestments
       .filter(inv => !inv.can_claim)
-      .map(inv => new Date(inv.next_claim_available_at))
+      .map(inv => new Date(inv.next_claim_at))
       .sort((a, b) => a.getTime() - b.getTime());
     
     return nextClaimDates[0] || null;

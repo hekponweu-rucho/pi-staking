@@ -67,11 +67,11 @@ export function DashboardStats() {
           );
           
           const dailyEarnings = investments.reduce((sum, inv) => 
-            inv.status === 'active' ? sum + (inv.amount * inv.effective_rate) : sum, 0
+            inv.status === 'active' ? sum + (inv.amount * inv.daily_rate) : sum, 0
           );
 
           const totalClaimed = claimStatsResponse.success ? 
-            claimStatsResponse.data.data.reduce((sum, claim) => sum + claim.amount, 0) : 0;
+            claimStatsResponse.data.data.reduce((sum, claim) => sum + (claim.final_amount ?? claim.amount ?? 0), 0) : 0;
 
           setStats({
             totalBalance: dashboardData.user.balance_pi || 0,

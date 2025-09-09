@@ -65,7 +65,7 @@ export interface AuthResponse {
 // Investment requests
 export interface CreateInvestmentRequest {
   amount: number;
-  package_id?: number;
+  staking_package_id: number;
   source: 'bonus' | 'funds';
 }
 
@@ -138,7 +138,7 @@ export interface DashboardStats {
     active_count: number;
     total_value: number;
     daily_return: number;
-    next_claim_available: string | null;
+    next_claim_at: string | null;
   };
   recent_activities: Array<{
     type: string;
