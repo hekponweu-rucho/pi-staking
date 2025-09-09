@@ -158,7 +158,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     if (!selectedPackage || !investmentForm.amount) return;
     
     try {
-      await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount));
+      const source = (selectedPackage.level === 'discovery' || (selectedPackage as any).is_discovery_bonus) ? 'bonus' : 'funds';
+      await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount), source);
       
       setShowInvestModal(false);
       setInvestmentForm({ staking_package_id: '', amount: '' });

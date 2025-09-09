@@ -10,7 +10,8 @@ export interface StakingPackage {
   min_amount: number;
   max_amount: number | null;
   max_duration_days: number;
-    is_active: boolean;
+  is_discovery_bonus?: boolean;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -63,7 +64,7 @@ class StakingService {
   }
 
   // Créer un nouvel investissement
-  async createInvestment(packageId: string, amount: number): Promise<{ 
+  async createInvestment(packageId: string, amount: number, source: 'funds' | 'bonus' = 'funds'): Promise<{ 
     success: boolean; 
     data: Investment; 
     message: string; 
@@ -71,7 +72,8 @@ class StakingService {
     try {
       const response = await api.post('/staking/invest', {
         staking_package_id: packageId,
-        amount
+        amount,
+        source
       });
       return response.data;
     } catch (error) {

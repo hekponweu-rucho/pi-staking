@@ -90,10 +90,12 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
     setInvestment(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await stakingService.createInvestment({
-        amount: investment.amount,
-        staking_package_id: investment.selectedPackage.id
-      });
+      const source = investment.selectedPackage.level === 'discovery' ? 'bonus' : 'funds';
+      const response = await stakingService.createInvestment(
+        investment.selectedPackage.id,
+        investment.amount,
+        source
+      );
 
       if (response.success) {
         setInvestment(prev => ({ ...prev, step: 3, isLoading: false }));
