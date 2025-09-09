@@ -36,7 +36,7 @@ class InvestmentResource extends JsonResource
             'next_claim_amount' => (float) $this->calculateNextClaimAmount(),
             'daily_return' => (float) $this->calculateDailyReturn(),
             'total_claimed' => (float) $this->whenLoaded('claims', function () {
-                return $this->claims->sum('amount');
+                return $this->claims->sum('final_amount');
             }, 0),
             'progress_percentage' => $this->progress_percentage,
             'remaining_days' => $this->remaining_days,

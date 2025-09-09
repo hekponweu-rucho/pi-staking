@@ -17,7 +17,8 @@ class StakingPackage extends Model
         'min_amount',
         'max_amount',
         'duration_days',
-        'level_requirement',
+        'max_duration_days',
+        'level',
         'is_active',
         'is_discovery_bonus',
         'max_concurrent',
@@ -30,6 +31,8 @@ class StakingPackage extends Model
         'min_amount' => 'decimal:8',
         'max_amount' => 'decimal:8',
         'duration_days' => 'integer',
+        'max_duration_days' => 'integer',
+        'level' => 'string',
         'is_active' => 'boolean',
         'is_discovery_bonus' => 'boolean',
         'max_concurrent' => 'integer',
@@ -37,75 +40,41 @@ class StakingPackage extends Model
         'sort_order' => 'integer',
     ];
 
-    // Relations
-
-    /**
-     * Investissements utilisant ce package
-     */
     public function investments(): HasMany
     {
         return $this->hasMany(Investment::class);
     }
 
-    // Scopes
-
-    /**
-     * Scope pour les packages actifs
-     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope pour les packages non-bonus de découverte
-     */
     public function scopeRegular($query)
     {
         return $query->where('is_discovery_bonus', false);
     }
 
-    /**
-     * Scope pour les packages bonus de découverte
-     */
     public function scopeDiscoveryBonus($query)
     {
         return $query->where('is_discovery_bonus', true);
     }
 
-    /**
-     * Scope pour filtrer par niveau requis
-     */
     public function scopeForLevel($query, string $level)
     {
-        return $query->where('level_requirement', $level);
+        return $query->where('level', $level);
     }
 
-    /**
-     * Scope pour ordonner par ordre d'affichage
-     */
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sort_order')->orderBy('name');
-    }
-
-    // Méthodes utilitaires
-
-    /**
-     * Vérifier si l'utilisateur peut utiliser ce package
-     */
     public function canBeUsedBy(User $user): bool
     {
         if (!$this->is_active) {
             return false;
         }
 
-        // Vérifier le niveau requis
-        if ($this->level_requirement && !$user->hasLevel($this->level_requirement)) {
+        if ($this->level && !$user->hasLevel($this->level)) {
             return false;
         }
 
-        // Vérifier le nombre maximum d'investissements simultanés
         if ($this->max_concurrent) {
             $activeInvestments = $user->investments()
                 ->where('staking_package_id', $this->id)
@@ -120,9 +89,6 @@ class StakingPackage extends Model
         return true;
     }
 
-    /**
-     * Vérifier si le montant est valide pour ce package
-     */
     public function isValidAmount(float $amount): bool
     {
         if ($amount < $this->min_amount) {
@@ -136,25 +102,16 @@ class StakingPackage extends Model
         return true;
     }
 
-    /**
-     * Calculer le rendement quotidien pour un montant donné
-     */
     public function calculateDailyReturn(float $amount): float
     {
         return $amount * $this->daily_rate;
     }
 
-    /**
-     * Calculer le rendement total pour la durée complète
-     */
     public function calculateTotalReturn(float $amount): float
     {
         return $this->calculateDailyReturn($amount) * $this->duration_days;
     }
 
-    /**
-     * Obtenir les fonctionnalités sous forme de texte lisible
-     */
     public function getReadableFeaturesAttribute(): array
     {
         $features = $this->features ?? [];

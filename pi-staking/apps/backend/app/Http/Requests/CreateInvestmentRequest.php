@@ -14,7 +14,7 @@ class CreateInvestmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'package_id' => 'required|integer|exists:staking_packages,id',
+            'staking_package_id' => 'required|integer|exists:staking_packages,id',
             'amount' => 'required|numeric|min:0.01',
             'source' => 'required|in:funds,bonus',
         ];
@@ -23,8 +23,8 @@ class CreateInvestmentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'package_id.required' => 'Le package de staking est requis.',
-            'package_id.exists' => 'Package de staking invalide.',
+            'staking_package_id.required' => 'Le package de staking est requis.',
+            'staking_package_id.exists' => 'Package de staking invalide.',
             'amount.required' => 'Le montant est requis.',
             'amount.min' => 'Le montant minimum est de 0.01 Pi.',
             'source.required' => 'La source de financement est requise.',

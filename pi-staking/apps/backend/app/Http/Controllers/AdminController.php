@@ -11,6 +11,8 @@ use App\Models\SystemAlert;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -20,124 +22,141 @@ class AdminController extends Controller
         $this->middleware('auth:sanctum');
     }
 
-    /**
-     * Dashboard principal avec métriques générales
-     */
     public function getDashboardStats(): JsonResponse
     {
         try {
-            // Métriques générales
-            $totalUsers = User::count();
-            $activeUsers = User::where('last_activity', '>=', now()->subDays(30))->count();
-            $newUsersToday = User::whereDate('created_at', today())->count();
-            $newUsersThisWeek = User::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count();
+            $users = [
+                'total' => User::count(),
+            ];
+            if (Schema::hasColumn('users', 'status')) {
+                $users['active'] = User::where('status', 'active')->count();
+            }
 
-            // Métriques financières
-            $totalInvested = Investment::where('status', 'active')->sum('amount');
-            $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
-            $pendingClaims = Investment::where('status', 'active')
-                ->where('next_claim_available_at', '<=', now())
-                ->count();
-            
-            // Calcul du TVL (Total Value Locked)
-            $tvl = Investment::where('status', 'active')->sum('amount');
-            $dailyVolume = Investment::whereDate('created_at', today())->sum('amount');
-            
-            // Revenus de la plateforme (frais)
-            $platformRevenue = $this->calculatePlatformRevenue();
-            
-            // Ratios de santé financière
-            $liquidityRatio = $this->calculateLiquidityRatio();
-            $claimRatio = $totalClaimed > 0 ? ($totalInvested / $totalClaimed) : 0;
+            $investments = [
+                'total' => Investment::count(),
+                'active' => Investment::where('status', 'active')->count(),
+                'total_amount' => (float) Investment::sum('amount'),
+            ];
 
-            // Alertes système
-            $activeAlerts = SystemAlert::where('is_resolved', false)
-                ->where('severity', '!=', 'low')
-                ->count();
+            $tvl = (float) Investment::where('status', 'active')->sum('amount');
 
-            // Packages les plus populaires
-            $popularPackages = StakingPackage::withCount('investments')
-                ->orderBy('investments_count', 'desc')
-                ->take(3)
-                ->get();
+            $claims = [
+                'total' => Claim::count(),
+                'processed' => Claim::where('status', 'processed')->count(),
+            ];
+
+            $transactionsData = null;
+            if (Schema::hasTable('transactions')) {
+                $transactionsData = [
+                    'total' => Transaction::count(),
+                    'volume' => (float) Transaction::sum('amount'),
+                ];
+            }
+
+            $packagesCount = StakingPackage::count();
+
+            $start = now()->subMonths(12)->startOfMonth();
+            $months = [];
+            for ($i = 0; $i < 12; $i++) {
+                $months[] = $start->copy()->addMonths($i)->format('Y-m');
+            }
+
+            $invAgg = Investment::select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('COUNT(*) as cnt'), DB::raw('SUM(amount) as amt'))
+                ->where('created_at', '>=', $start)
+                ->groupBy('ym')
+                ->orderBy('ym')
+                ->get()
+                ->keyBy('ym');
+
+            $investmentsByMonth = [];
+            $investmentVolumeByMonth = [];
+            foreach ($months as $ym) {
+                $investmentsByMonth[] = [
+                    'month' => $ym,
+                    'count' => (int) ($invAgg[$ym]->cnt ?? 0),
+                ];
+                $investmentVolumeByMonth[] = [
+                    'month' => $ym,
+                    'amount' => (float) ($invAgg[$ym]->amt ?? 0),
+                ];
+            }
+
+            $claimAgg = Claim::select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('COUNT(*) as cnt'), DB::raw('SUM(final_amount) as amt'))
+                ->where('status', 'processed')
+                ->where('created_at', '>=', $start)
+                ->groupBy('ym')
+                ->orderBy('ym')
+                ->get()
+                ->keyBy('ym');
+
+            $claimsByMonth = [];
+            $claimVolumeByMonth = [];
+            foreach ($months as $ym) {
+                $claimsByMonth[] = [
+                    'month' => $ym,
+                    'count' => (int) ($claimAgg[$ym]->cnt ?? 0),
+                ];
+                $claimVolumeByMonth[] = [
+                    'month' => $ym,
+                    'amount' => (float) ($claimAgg[$ym]->amt ?? 0),
+                ];
+            }
+
+            $transactionVolumeByMonth = null;
+            if (Schema::hasTable('transactions')) {
+                $txAgg = Transaction::select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as ym"), DB::raw('SUM(amount) as amt'))
+                    ->where('created_at', '>=', $start)
+                    ->groupBy('ym')
+                    ->orderBy('ym')
+                    ->get()
+                    ->keyBy('ym');
+                $tmp = [];
+                foreach ($months as $ym) {
+                    $tmp[] = [
+                        'month' => $ym,
+                        'amount' => (float) ($txAgg[$ym]->amt ?? 0),
+                    ];
+                }
+                $transactionVolumeByMonth = $tmp;
+            }
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'overview' => [
-                        'total_users' => $totalUsers,
-                        'active_users' => $activeUsers,
-                        'new_users_today' => $newUsersToday,
-                        'new_users_week' => $newUsersThisWeek,
-                        'active_users_percentage' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 1) : 0,
-                        'user_growth_rate' => $this->calculateUserGrowthRate(),
-                    ],
-                    'financial' => [
-                        'total_value_locked' => $tvl,
-                        'total_invested' => $totalInvested,
-                        'total_claimed' => $totalClaimed,
-                        'daily_volume' => $dailyVolume,
-                        'platform_revenue' => $platformRevenue,
-                        'pending_claims' => $pendingClaims,
-                        'pending_claims_amount' => $this->calculatePendingClaimsAmount(),
-                        'liquidity_ratio' => $liquidityRatio,
-                        'claim_ratio' => round($claimRatio, 2),
-                    ],
-                    'health_indicators' => [
-                        'liquidity_status' => $this->getLiquidityStatus($liquidityRatio),
-                        'platform_status' => $this->getPlatformStatus(),
-                        'active_alerts' => $activeAlerts,
-                        'system_load' => $this->getSystemLoad(),
-                    ],
-                    'popular_packages' => $popularPackages->map(function ($package) {
-                        return [
-                            'id' => $package->id,
-                            'name' => $package->name,
-                            'investments_count' => $package->investments_count,
-                            'daily_rate' => $package->daily_rate * 100,
-                            'total_invested' => Investment::where('package_id', $package->id)
-                                ->where('status', 'active')
-                                ->sum('amount'),
-                        ];
-                    }),
+                    'users' => $users,
+                    'investments' => $investments,
+                    'tvl' => $tvl,
+                    'claims' => $claims,
+                    'transactions' => $transactionsData,
+                    'packages' => $packagesCount,
+                    'charts' => array_filter([
+                        'investmentsByMonth' => $investmentsByMonth,
+                        'investmentVolumeByMonth' => $investmentVolumeByMonth,
+                        'claimsByMonth' => $claimsByMonth,
+                        'claimVolumeByMonth' => $claimVolumeByMonth,
+                        'transactionVolumeByMonth' => $transactionVolumeByMonth,
+                    ]),
                 ]
             ]);
-
         } catch (\Exception $e) {
+            Log::error('Admin dashboard error', ['message' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération des statistiques admin',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'message' => 'Erreur lors de la récupération des statistiques admin'
             ], 500);
         }
     }
 
-    /**
-     * Analytics détaillés avec graphiques
-     */
     public function getAnalytics(Request $request): JsonResponse
     {
-        $period = $request->get('period', '30d'); // 7d, 30d, 90d, 1y
-        
+        $period = $request->get('period', '30d');
         try {
             $startDate = $this->getStartDateFromPeriod($period);
-            
-            // Évolution des utilisateurs
             $userEvolution = $this->getUserEvolution($startDate);
-            
-            // Évolution du TVL
             $tvlEvolution = $this->getTVLEvolution($startDate);
-            
-            // Évolution des claims vs revenus
             $claimsVsRevenue = $this->getClaimsVsRevenue($startDate);
-            
-            // Distribution des niveaux utilisateurs
             $userLevels = $this->getUserLevelsDistribution();
-            
-            // Top packages par performance
             $packagesPerformance = $this->getPackagesPerformance($startDate);
-            
-            // Analyse des transactions
             $transactionAnalysis = $this->getTransactionAnalysis($startDate);
 
             return response()->json([
@@ -153,7 +172,6 @@ class AdminController extends Controller
                     'transaction_analysis' => $transactionAnalysis,
                 ]
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -163,9 +181,6 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Gestion des utilisateurs
-     */
     public function getUsers(Request $request): JsonResponse
     {
         try {
@@ -198,10 +213,9 @@ class AdminController extends Controller
 
             $users = $query->paginate($perPage);
 
-            // Enrichir les données utilisateur
             $users->getCollection()->transform(function ($user) {
                 $activeInvestments = $user->investments->where('status', 'active');
-                $totalClaimed = $user->claims->where('status', 'completed')->sum('final_amount');
+                $totalClaimed = $user->claims->where('status', 'processed')->sum('final_amount');
 
                 return [
                     'id' => $user->id,
@@ -227,7 +241,6 @@ class AdminController extends Controller
                 'success' => true,
                 'data' => $users
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -237,9 +250,6 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Monitoring des transactions
-     */
     public function getTransactions(Request $request): JsonResponse
     {
         try {
@@ -255,15 +265,12 @@ class AdminController extends Controller
             if ($type) {
                 $query->where('type', $type);
             }
-
             if ($status) {
                 $query->where('status', $status);
             }
-
             if ($dateFrom) {
                 $query->whereDate('created_at', '>=', $dateFrom);
             }
-
             if ($dateTo) {
                 $query->whereDate('created_at', '<=', $dateTo);
             }
@@ -274,7 +281,6 @@ class AdminController extends Controller
                 'success' => true,
                 'data' => $transactions
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -284,9 +290,6 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Alertes système
-     */
     public function getSystemAlerts(): JsonResponse
     {
         try {
@@ -299,7 +302,6 @@ class AdminController extends Controller
                 'success' => true,
                 'data' => $alerts
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -309,9 +311,6 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Actions administratives sur les utilisateurs
-     */
     public function updateUser(Request $request, User $user): JsonResponse
     {
         $request->validate([
@@ -327,10 +326,8 @@ class AdminController extends Controller
             ]));
 
             if ($request->has('is_active') && !$request->is_active) {
-                // Suspendre l'utilisateur
                 $user->update(['suspended_at' => now()]);
             } elseif ($request->has('is_active') && $request->is_active) {
-                // Réactiver l'utilisateur
                 $user->update(['suspended_at' => null]);
             }
 
@@ -339,7 +336,6 @@ class AdminController extends Controller
                 'message' => 'Utilisateur mis à jour avec succès',
                 'data' => $user->fresh()
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -349,40 +345,25 @@ class AdminController extends Controller
         }
     }
 
-    // === MÉTHODES PRIVÉES POUR LES CALCULS ===
-
     private function calculatePlatformRevenue(): float
     {
-        // Calcul des revenus basé sur les frais de dépôt et de performance
-        $depositFees = Investment::where('status', 'active')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('investments.amount * staking_packages.deposit_fee_rate'));
-
-        $performanceFees = Claim::where('status', 'completed')
-            ->join('investments', 'claims.investment_id', '=', 'investments.id')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('claims.final_amount * staking_packages.performance_fee_rate'));
-
-        return $depositFees + $performanceFees;
+        return 0.0;
     }
 
     private function calculateLiquidityRatio(): float
     {
-        $totalReserve = 1000000; // À adapter selon votre réserve réelle
-        $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
+        $totalReserve = 1000000;
+        $totalClaimed = Claim::where('status', 'processed')->sum('final_amount');
         $pendingClaims = $this->calculatePendingClaimsAmount();
-        
         $totalObligations = $totalClaimed + $pendingClaims;
-        
         return $totalObligations > 0 ? ($totalReserve / $totalObligations) : 1.0;
     }
 
     private function calculatePendingClaimsAmount(): float
     {
-        return Investment::where('status', 'active')
-            ->where('next_claim_available_at', '<=', now())
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('investments.amount * investments.effective_rate'));
+        return (float) Investment::where('status', 'active')
+            ->where('next_claim_at', '<=', now())
+            ->sum(DB::raw('amount * daily_rate'));
     }
 
     private function calculateUserGrowthRate(): float
@@ -390,13 +371,9 @@ class AdminController extends Controller
         $lastMonthUsers = User::whereDate('created_at', '>=', now()->subDays(60))
             ->whereDate('created_at', '<', now()->subDays(30))
             ->count();
-            
         $thisMonthUsers = User::whereDate('created_at', '>=', now()->subDays(30))
             ->count();
-
-        return $lastMonthUsers > 0 ? 
-            round((($thisMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 1) : 
-            0;
+        return $lastMonthUsers > 0 ? round((($thisMonthUsers - $lastMonthUsers) / $lastMonthUsers) * 100, 1) : 0;
     }
 
     private function getLiquidityStatus(float $ratio): string
@@ -412,24 +389,18 @@ class AdminController extends Controller
         $criticalAlerts = SystemAlert::where('is_resolved', false)
             ->where('severity', 'critical')
             ->count();
-
         if ($criticalAlerts > 0) return 'critical';
-        
         $highAlerts = SystemAlert::where('is_resolved', false)
             ->where('severity', 'high')
             ->count();
-
         if ($highAlerts > 5) return 'warning';
-        
         return 'healthy';
     }
 
     private function getSystemLoad(): float
     {
-        // Calcul basique de la charge système
         $activeUsers = User::where('last_activity', '>=', now()->subHour())->count();
-        $maxCapacity = 1000; // À adapter selon votre infrastructure
-        
+        $maxCapacity = 1000;
         return min(($activeUsers / $maxCapacity) * 100, 100);
     }
 
@@ -481,13 +452,13 @@ class AdminController extends Controller
     {
         $claims = Claim::selectRaw('DATE(created_at) as date, SUM(final_amount) as claims')
             ->where('created_at', '>=', $startDate)
-            ->where('status', 'completed')
+            ->where('status', 'processed')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
             ->keyBy('date');
 
-        $revenue = Investment::selectRaw('DATE(created_at) as date, SUM(amount * 0.02) as revenue') // 2% fee example
+        $revenue = Investment::selectRaw('DATE(created_at) as date, SUM(amount * 0.02) as revenue')
             ->where('created_at', '>=', $startDate)
             ->groupBy('date')
             ->orderBy('date')
@@ -529,8 +500,8 @@ class AdminController extends Controller
             ->map(function ($package) {
                 $totalInvested = $package->investments->sum('amount');
                 $totalClaims = Claim::whereHas('investment', function ($query) use ($package) {
-                    $query->where('package_id', $package->id);
-                })->where('status', 'completed')->sum('final_amount');
+                    $query->where('staking_package_id', $package->id);
+                })->where('status', 'processed')->sum('final_amount');
 
                 return [
                     'name' => $package->name,
@@ -547,12 +518,10 @@ class AdminController extends Controller
     private function getTransactionAnalysis(Carbon $startDate): array
     {
         $totalTransactions = Transaction::where('created_at', '>=', $startDate)->count();
-        
         $byType = Transaction::selectRaw('type, COUNT(*) as count, SUM(ABS(amount)) as volume')
             ->where('created_at', '>=', $startDate)
             ->groupBy('type')
             ->get();
-
         $byStatus = Transaction::selectRaw('status, COUNT(*) as count')
             ->where('created_at', '>=', $startDate)
             ->groupBy('status')

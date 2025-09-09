@@ -17,15 +17,12 @@ class ClaimResource extends JsonResource
             'investment_id' => $this->investment_id,
             'user_id' => $this->user_id,
             
-            // Claim details
-            'amount' => (float) $this->amount,
+            'final_amount' => (float) $this->final_amount,
             'claimed_for_day' => $this->claimed_for_day,
             'status' => $this->status,
             'bonus_amount' => (float) ($this->bonus_amount ?? 0),
-            'effective_rate' => (float) ($this->effective_rate ?? 0),
             
-            // Timestamps
-            'created_at' => $this->created_at->toISOString(),
+                        'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
             
             // Computed fields
