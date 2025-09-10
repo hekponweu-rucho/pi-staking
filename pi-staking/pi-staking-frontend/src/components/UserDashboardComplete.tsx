@@ -56,6 +56,7 @@ import { useDashboard } from '../contexts/DashboardContext';
 import { securityService } from '../services/securityService';
 import { transactionsService } from '../services/transactionsService';
 import { claimsService } from '../services/claimsService';
+import { stakingService } from '../services/stakingService';
 
 // Import du composant Parrainage
 import { ReferralDashboard } from './ReferralDashboard';
@@ -66,7 +67,7 @@ interface UserDashboardCompleteProps {
 }
 
 export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) {
-  const { state: authState, updateProfile } = useAuth();
+  const { state: authState, updateProfile, refreshUser, claimWelcomeBonus } = useAuth();
   const user = authState.user;
   const { state: stakingState, refreshAllData, createInvestment, claimInvestment } = useStaking();
   const { 
@@ -187,6 +188,34 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     }
   };
 
+  const handleClaimWelcome = async () => {
+    try {
+      const ok = await claimWelcomeBonus();
+      if (ok) {
+        await refreshUser();
+        await refreshAllData();
+        window.alert('Bonus de bienvenue réclamé avec succès');
+      }
+    } catch (e) {
+      console.error(e);
+      window.alert("Échec de la réclamation du bonus");
+    }
+  };
+
+  const handleReinvestBonus = async () => {
+    try {
+      const res = await stakingService.reinvestBonus();
+      if (res.success) {
+        window.alert('Bonus réinvesti avec succès');
+        await refreshAllData();
+        await refreshUser();
+      }
+    } catch (e) {
+      console.error(e);
+      window.alert("Échec du réinvestissement du bonus");
+    }
+  };
+
   const handleClaimAll = async () => {
     if (!claimableInvestments?.length) return;
     
@@ -235,6 +264,52 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const calculatedTotalInvested = investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0;
   const totalEarnings = investments?.reduce((sum, inv) => sum + (inv.total_earned || 0), 0) || 0;
   const totalClaimable = claimableInvestments?.reduce((sum, inv) => sum + (inv.claimable_amount || 0), 0) || 0;
+
+  const welcomeBonusClaimed = Boolean((user as any)?.welcome_bonus_claimed);
+  const welcomeBonusReinvested = Boolean((user as any)?.welcome_bonus_reinvested);
+  const bonusGrants = (user as any)?.bonus_grants || [];
+  const activeWelcomeGrant = Array.isArray(bonusGrants)
+    ? bonusGrants.find((g: any) => g?.type === 'welcome' && !g?.is_used)
+    : null;
+
+  const [bonusCountdown, setBonusCountdown] = useState<string>('');
+  const [bonusUrgent, setBonusUrgent] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!activeWelcomeGrant?.expires_at) {
+      setBonusCountdown('');
+      setBonusUrgent(false);
+      return;
+    }
+    const update = () => {
+      const expires = new Date(activeWelcomeGrant.expires_at).getTime();
+      const now = Date.now();
+      let diff = expires - now;
+      if (diff <= 0) {
+        setBonusCountdown('Expiré');
+        setBonusUrgent(true);
+        return;
+      }
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      diff -= d * 24 * 60 * 60 * 1000;
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      diff -= h * 60 * 60 * 1000;
+      const m = Math.floor(diff / (1000 * 60));
+      diff -= m * 60 * 1000;
+      const s = Math.floor(diff / 1000);
+      const parts = [
+        d > 0 ? `${d}j` : null,
+        `${String(h).padStart(2, '0')}h`,
+        `${String(m).padStart(2, '0')}m`,
+        `${String(s).padStart(2, '0')}s`
+      ].filter(Boolean);
+      setBonusCountdown(parts.join(' '));
+      setBonusUrgent((new Date(activeWelcomeGrant.expires_at).getTime() - now) <= 7 * 24 * 60 * 60 * 1000);
+    };
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [activeWelcomeGrant?.expires_at]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 relative">
@@ -346,6 +421,21 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
           {/* Vue d'ensemble */}
           <TabsContent value="overview" className="space-y-6">
+            {/* Bandeau d'incitation pour bonus non réclamé */}
+            {!welcomeBonusClaimed && (
+              <Alert>
+                <Gift className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between w-full">
+                  <span>
+                    Vous avez un bonus de bienvenue à réclamer pour découvrir le package "Discovery".
+                  </span>
+                  <Button size="sm" className="ml-4" onClick={handleClaimWelcome}>
+                    Réclamer maintenant
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Stats Rapides */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <GlowCard>
@@ -407,6 +497,44 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </GlowCard>
             </div>
 
+            {/* État du bonus */}
+            {welcomeBonusClaimed && (
+              <GlowCard className={bonusUrgent ? 'ring-1 ring-red-500/40' : ''}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <Gift className="h-4 w-4 text-pi-gold" /> Bonus de bienvenue
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Disponible</p>
+                      <p className="text-xl font-bold">
+                        {formatCurrency(Number((user as any)?.bonus_balance ?? 0))} π
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Expiration</p>
+                      <p className={`text-xl font-bold ${bonusUrgent ? 'text-red-600' : ''}`}>
+                        {activeWelcomeGrant?.expires_at ? formatDate(activeWelcomeGrant.expires_at) : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Compte à rebours</p>
+                      <p className={`text-xl font-bold ${bonusUrgent ? 'text-red-600' : ''}`}>
+                        {bonusCountdown || '—'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <Badge className={bonusUrgent ? 'bg-red-500/10 text-red-600' : ''} variant={welcomeBonusReinvested ? 'default' : 'secondary'}>
+                        {welcomeBonusReinvested ? 'Réinvesti' : 'À réinvestir'}
+                      </Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </GlowCard>
+            )}
+
             {/* Actions Rapides */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button 
@@ -418,6 +546,18 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <span>Nouvel Investissement</span>
                 </div>
               </Button>
+
+              {(user as any)?.welcome_bonus_claimed && !(user as any)?.welcome_bonus_reinvested && (
+                <Button 
+                  onClick={handleReinvestBonus}
+                  className="h-16 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <div className="flex flex-col items-center gap-2">
+                    <Gift className="h-5 w-5" />
+                    <span>Réinvestir mon bonus</span>
+                  </div>
+                </Button>
+              )}
 
               <Button 
                 onClick={handleClaimAll}
