@@ -179,11 +179,13 @@ const stakingReducer = (state: StakingState, action: StakingAction): StakingStat
       return { ...state, autoRefreshInterval: action.payload };
     
     case 'CALCULATE_TOTALS':
-      const totalInvested = state.investments.reduce((sum, inv) => sum + inv.amount, 0);
-      const totalEarned = state.investments.reduce((sum, inv) => sum + inv.total_earned, 0);
-      const totalClaimed = state.investments.reduce((sum, inv) => sum + inv.total_claimed, 0);
-      const activeInvestments = state.investments.filter(inv => inv.status === 'active').length;
-      const totalClaimableNow = state.claimableInvestments.reduce((sum, inv) => 
+      const safeInvestments = Array.isArray(state.investments) ? state.investments : [];
+      const safeClaimable = Array.isArray(state.claimableInvestments) ? state.claimableInvestments : [];
+      const totalInvested = safeInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+      const totalEarned = safeInvestments.reduce((sum, inv) => sum + inv.total_earned, 0);
+      const totalClaimed = safeInvestments.reduce((sum, inv) => sum + inv.total_claimed, 0);
+      const activeInvestments = safeInvestments.filter(inv => inv.status === 'active').length;
+      const totalClaimableNow = safeClaimable.reduce((sum, inv) => 
         inv.can_claim ? sum + inv.claimable_amount : sum, 0
       );
       
@@ -340,7 +342,9 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
       const response = await stakingService.createInvestment(packageId, amount, source);
       
       if (response.success) {
-        dispatch({ type: 'ADD_INVESTMENT', payload: response.data });
+        if (response.data) {
+          dispatch({ type: 'ADD_INVESTMENT', payload: response.data });
+        }
         
         // Recharger les données liées
         await Promise.all([
@@ -372,7 +376,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
           type: 'UPDATE_INVESTMENT',
           payload: {
             id: investmentId,
-            updates: response.data
+            updates: response.data ?? {}
           }
         });
         return response.data;

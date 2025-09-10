@@ -127,9 +127,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     try {
       const logs = await securityService.getSecurityLogs();
       setSecurityLogs(logs.data?.logs?.slice(0, 10) || []); // Dernières 10 entrées
-      
-      const response = await securityService.getSecurityStats();
-      setTwoFactorEnabled(response.data?.risk_score_average > 0.8 || false);
+      // const response = await securityService.getSecurityStats();
+      // setTwoFactorEnabled(response.data?.risk_score_average > 0.8 || false);
     } catch (error) {
       console.error('Erreur chargement sécurité:', error);
     }
@@ -263,9 +262,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   };
 
   const normalizedPackages = Array.isArray(packages) ? packages : (packages as any)?.packages || [];
-  const calculatedTotalInvested = investments?.reduce((sum, inv) => sum + inv.amount, 0) || 0;
-  const totalEarnings = investments?.reduce((sum, inv) => sum + (inv.total_earned || 0), 0) || 0;
-  const totalClaimable = claimableInvestments?.reduce((sum, inv) => sum + (inv.claimable_amount || 0), 0) || 0;
+  const safeInvestments = Array.isArray(investments) ? investments : [];
+  const calculatedTotalInvested = safeInvestments.reduce((sum, inv) => sum + inv.amount, 0) || 0;
+  const totalEarnings = safeInvestments.reduce((sum, inv) => sum + (inv.total_earned || 0), 0) || 0;
+  const safeClaimableInvestments = Array.isArray(claimableInvestments) ? claimableInvestments : [];
+  const totalClaimable = safeClaimableInvestments.reduce((sum, inv) => sum + (inv.claimable_amount || 0), 0);
 
   const welcomeBonusClaimed = Boolean((user as any)?.welcome_bonus_claimed);
   const welcomeBonusReinvested = Boolean((user as any)?.welcome_bonus_reinvested);
@@ -749,7 +750,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
             {/* Investissements actifs */}
             <div className="space-y-4">
-              {investments?.map((investment) => (
+              {safeInvestments.map((investment) => (
                 <GlowCard key={investment.id}>
                   <CardContent className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
@@ -776,7 +777,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                         <div className="space-y-2">
                           {(() => {
                             const daysElapsed = Math.floor((new Date().getTime() - new Date(investment.created_at).getTime()) / (1000 * 60 * 60 * 24));
-                            const maxDays = investment.package?.max_duration_days || 365;
+                            const maxDays = investment.package?.duration_days || 365;
                             return (
                               <>
                                 <Progress 
@@ -824,7 +825,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </GlowCard>
               ))}
 
-              {!investments?.length && (
+              {!safeInvestments.length && (
                 <GlowCard>
                   <CardContent className="text-center py-12">
                     <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -868,7 +869,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
             {/* Réclamations disponibles */}
             <div className="space-y-4">
-              {claimableInvestments?.map((investment) => (
+              {safeClaimableInvestments.map((investment) => (
                 <GlowCard key={investment.id} className="border-pi-gold/50">
                   <CardContent className="p-6">
                     <div className="flex justify-between items-center">
@@ -901,7 +902,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </GlowCard>
               ))}
 
-              {!claimableInvestments?.length && (
+              {!safeClaimableInvestments.length && (
                 <GlowCard>
                   <CardContent className="text-center py-12">
                     <Timer className="h-16 w-16 mx-auto text-muted-foreground mb-4" />

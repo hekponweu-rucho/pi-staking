@@ -142,13 +142,14 @@ function SecurityOverview() {
 
   const loadSecurityData = async () => {
     try {
-      const [statusRes, statsRes] = await Promise.all([
-        api.get('/security/account-status'),
-        api.get('/security/stats')
-      ]);
-      
-      setStatus(statusRes.data.data);
-      setStats(statsRes.data.data);
+      // const [statusRes, statsRes] = await Promise.all([
+      //   api.get('/security/account-status'),
+      //   api.get('/security/stats')
+      // ]);
+      //
+      // setStatus(statusRes.data.data);
+      // setStats(statsRes.data.data);
+      // Désactivé temporairement car l'API plante
     } catch (error) {
       console.error('Erreur chargement données sécurité:', error);
     } finally {

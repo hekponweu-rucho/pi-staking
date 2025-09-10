@@ -243,13 +243,15 @@ class SecurityService {
 
   // Récupérer les statistiques de sécurité
   async getSecurityStats(days: number = 30): Promise<{ success: boolean; data: SecurityStats }> {
-    try {
-      const response = await api.get(`/security/stats?days=${days}`);
-      return response.data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des statistiques:', error);
-      throw error;
-    }
+  // try {
+  //   const response = await api.get(`/security/stats?days=${days}`);
+  //   return response.data;
+  // } catch (error) {
+  //   console.error('Erreur lors de la récupération des statistiques:', error);
+  //   throw error;
+  // }
+  // Désactivé temporairement car l'API plante
+  return { success: false, data: {} as SecurityStats };
   }
 
   // === PRÉFÉRENCES DE SÉCURITÉ ===

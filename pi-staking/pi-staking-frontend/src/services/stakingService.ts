@@ -4,14 +4,17 @@ import api from '../lib/api-enhanced';
 export interface StakingPackage {
   id: string;
   name: string;
-  description: string;
-  level: 'discovery' | 'bronze' | 'silver' | 'gold' | 'diamond';
+  description: string | null;
+  level_requirement: 'discovery' | 'bronze' | 'silver' | 'gold' | 'diamond' | null;
   daily_rate: number;
   min_amount: number;
   max_amount: number | null;
-  max_duration_days: number;
-  is_discovery_bonus?: boolean;
+  duration_days: number;
+  is_discovery_bonus: boolean;
   is_active: boolean;
+  max_concurrent: number | null;
+  features: any | null; // JSON
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -51,24 +54,27 @@ export interface EarningsCalculation {
 }
 
 class StakingService {
-  
-  // Récupérer tous les packages de staking disponibles
-  async getPackages(): Promise<{ success: boolean; data: StakingPackage[] }> {
+  // ✅ Récupérer tous les packages de staking disponibles
+  async getPackages(): Promise<{ success: boolean; data: StakingPackage[]; message?: string }> {
     try {
       const response = await api.get('/staking/packages');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la récupération des packages:', error);
-      throw error;
+      return {
+        success: false,
+        data: [],
+        message: error.response?.data?.message || 'Erreur serveur lors de la récupération des packages'
+      };
     }
   }
 
-  // Créer un nouvel investissement
-  async createInvestment(packageId: string, amount: number, source: 'funds' | 'bonus' = 'funds'): Promise<{ 
-    success: boolean; 
-    data: Investment; 
-    message: string; 
-  }> {
+  // ✅ Créer un nouvel investissement
+  async createInvestment(
+    packageId: string,
+    amount: number,
+    source: 'funds' | 'bonus' = 'funds'
+  ): Promise<{ success: boolean; data: Investment | null; message: string }> {
     try {
       const response = await api.post('/staking/invest', {
         staking_package_id: packageId,
@@ -76,47 +82,63 @@ class StakingService {
         source
       });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la création de l\'investissement:', error);
-      throw error;
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Impossible de créer l\'investissement'
+      };
     }
   }
 
-  // Récupérer les investissements de l'utilisateur
-  async getUserInvestments(): Promise<{ success: boolean; data: Investment[] }> {
+  // ✅ Récupérer les investissements de l'utilisateur
+  async getUserInvestments(): Promise<{ success: boolean; data: Investment[]; message?: string }> {
     try {
       const response = await api.get('/staking/investments');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la récupération des investissements:', error);
-      throw error;
+      return {
+        success: false,
+        data: [],
+        message: error.response?.data?.message || 'Impossible de charger les investissements'
+      };
     }
   }
 
-  // Récupérer les détails d'un investissement spécifique
-  async getInvestmentDetails(investmentId: string): Promise<{ 
-    success: boolean; 
-    data: Investment & {
+  // ✅ Récupérer les détails d'un investissement spécifique
+  async getInvestmentDetails(
+    investmentId: string
+  ): Promise<{
+    success: boolean;
+    data: (Investment & {
       claimable_amount: number;
       days_remaining: number;
       total_days: number;
       progress_percentage: number;
-    }
+    }) | null;
+    message?: string;
   }> {
     try {
       const response = await api.get(`/staking/investment/${investmentId}`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la récupération des détails de l\'investissement:', error);
-      throw error;
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Impossible de charger les détails de l\'investissement'
+      };
     }
   }
 
-  // Calculer les gains potentiels pour un investissement
-  async calculateEarnings(packageId: string, amount: number, duration?: number): Promise<{ 
-    success: boolean; 
-    data: EarningsCalculation 
-  }> {
+  // ✅ Calculer les gains potentiels pour un investissement
+  async calculateEarnings(
+    packageId: string,
+    amount: number,
+    duration?: number
+  ): Promise<{ success: boolean; data: EarningsCalculation | null; message?: string }> {
     try {
       const response = await api.post('/staking/calculate-earnings', {
         staking_package_id: packageId,
@@ -124,23 +146,30 @@ class StakingService {
         duration_days: duration
       });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du calcul des gains:', error);
-      throw error;
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Impossible de calculer les gains'
+      };
     }
   }
 
-  // Récupérer l'historique de performance
-  async getPerformanceHistory(period: 'week' | 'month' | 'year' = 'month'): Promise<{ 
-    success: boolean; 
-    data: PerformanceData[] 
-  }> {
+  // ✅ Récupérer l'historique de performance
+  async getPerformanceHistory(
+    period: 'week' | 'month' | 'year' = 'month'
+  ): Promise<{ success: boolean; data: PerformanceData[]; message?: string }> {
     try {
       const response = await api.get(`/staking/performance?period=${period}`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la récupération de l\'historique de performance:', error);
-      throw error;
+      return {
+        success: false,
+        data: [],
+        message: error.response?.data?.message || 'Impossible de charger l\'historique de performance'
+      };
     }
   }
 
@@ -155,7 +184,7 @@ class StakingService {
     }
   }
 
-  // Calculer les statistiques de staking pour l'utilisateur
+  // ✅ Calculer les statistiques de staking pour l'utilisateur
   async getStakingStats(): Promise<{
     success: boolean;
     data: {
@@ -167,24 +196,29 @@ class StakingService {
       average_daily_return: number;
       best_package: string;
       total_profit_percentage: number;
-    }
+    } | null;
+    message?: string;
   }> {
     try {
-      // On utilise les investissements pour calculer les stats côté client
       const investmentsResponse = await this.getUserInvestments();
-      if (!investmentsResponse.success) throw new Error('Impossible de récupérer les investissements');
+      if (!investmentsResponse.success || !investmentsResponse.data) {
+        return {
+          success: false,
+          data: null,
+          message: 'Impossible de récupérer les investissements pour calculer les stats'
+        };
+      }
 
-      const investments = investmentsResponse.data;
-      const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-      const totalEarned = investments.reduce((sum, inv) => sum + inv.total_earned, 0);
-      const totalClaimed = investments.reduce((sum, inv) => sum + inv.total_claimed, 0);
+      const investments = investmentsResponse.data || [];
+      const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+      const totalEarned = investments.reduce((sum, inv) => sum + (inv.total_earned || 0), 0);
+      const totalClaimed = investments.reduce((sum, inv) => sum + (inv.total_claimed || 0), 0);
       const activeInvestments = investments.filter(inv => inv.status === 'active').length;
       const completedInvestments = investments.filter(inv => inv.status === 'completed').length;
 
-      // Calculer le retour quotidien moyen
       const totalDailyReturns = investments.reduce((sum, inv) => {
         if (inv.status === 'active') {
-          const dailyReturn = (inv.amount * inv.daily_rate);
+          const dailyReturn = inv.amount * inv.daily_rate;
           return sum + dailyReturn;
         }
         return sum;
@@ -192,16 +226,18 @@ class StakingService {
 
       const averageDailyReturn = activeInvestments > 0 ? totalDailyReturns / activeInvestments : 0;
 
-      // Trouver le meilleur package (celui avec le plus d'investissements)
+      // Best package
       const packageCounts = investments.reduce((acc, inv) => {
         const packageName = inv.package?.name || 'Inconnu';
         acc[packageName] = (acc[packageName] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      const bestPackage = Object.entries(packageCounts).reduce((a, b) => 
-        packageCounts[a[0]] > packageCounts[b[0]] ? a : b
-      )[0] || 'Aucun';
+      const bestPackage =
+        Object.entries(packageCounts).reduce(
+          (a, b) => (packageCounts[a[0]] > packageCounts[b[0]] ? a : b),
+          ['Aucun', 0]
+        )[0] || 'Aucun';
 
       const totalProfitPercentage = totalInvested > 0 ? (totalEarned / totalInvested) * 100 : 0;
 
@@ -218,9 +254,13 @@ class StakingService {
           total_profit_percentage: totalProfitPercentage
         }
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors du calcul des statistiques de staking:', error);
-      throw error;
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Erreur serveur lors du calcul des statistiques'
+      };
     }
   }
 }
