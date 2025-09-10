@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class Investment extends Model
 {
@@ -111,6 +112,11 @@ class Investment extends Model
 
     // Méthodes utilitaires
 
+    public static function allowedStatuses(): array
+    {
+        return ['active', 'completed', 'cancelled', 'failed'];
+    }
+
     /**
      * Vérifier si un claim est possible maintenant
      */
@@ -198,6 +204,65 @@ class Investment extends Model
         }
 
         return $claim;
+    }
+
+    /**
+     * Transition sécurisée de statut avec journalisation et audit
+     */
+    public function transitionStatus(string $newStatus, ?int $actorId = null, ?string $reason = null): bool
+    {
+        $allowed = [
+            'active' => ['completed', 'cancelled', 'failed'],
+            'completed' => [],
+            'cancelled' => [],
+            'failed' => [],
+        ];
+
+        if (!in_array($newStatus, self::allowedStatuses(), true)) {
+            return false;
+        }
+
+        $old = $this->status;
+        if (!array_key_exists($old, $allowed) || !in_array($newStatus, $allowed[$old], true)) {
+            Log::channel('daily')->warning('Invalid investment status transition', [
+                'investment_id' => $this->id,
+                'user_id' => $this->user_id,
+                'status_before' => $old,
+                'status_after' => $newStatus,
+                'actor_id' => $actorId,
+                'reason' => $reason,
+            ]);
+            return false;
+        }
+
+        $this->update(['status' => $newStatus]);
+
+        Log::channel('daily')->info('Investment status changed', [
+            'investment_id' => $this->id,
+            'user_id' => $this->user_id,
+            'status_before' => $old,
+            'status_after' => $newStatus,
+            'actor_id' => $actorId,
+            'reason' => $reason,
+        ]);
+
+        if (class_exists(Audit::class)) {
+            Audit::create([
+                'actor_id' => $actorId,
+                'action' => 'investment.status_changed',
+                'auditable_type' => self::class,
+                'auditable_id' => $this->id,
+                'event' => 'updated',
+                'old_values' => ['status' => $old],
+                'new_values' => ['status' => $newStatus],
+                'risk_level' => 'LOW',
+                'requires_review' => false,
+                'is_suspicious' => false,
+                'metadata' => $reason ? ['reason' => $reason] : null,
+            ]);
+        }
+
+        return true;
     }
 
     /**

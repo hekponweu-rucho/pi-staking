@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
+use App\Http\Controllers\AdminDepositController;
 
 /*
 |--------------------------------------------------------------------------
@@ -317,6 +318,11 @@ Route::middleware('auth:sanctum')->group(function () {
             $transaction->update(['status' => request('status')]);
             return response()->json(['success' => true, 'data' => $transaction]);
         });
+
+        // Dépôts (supervision admin)
+        Route::get('/deposits', [AdminDepositController::class, 'index']);
+        Route::post('/deposits/{id}/expire', [AdminDepositController::class, 'expire']);
+        Route::post('/deposits/{id}/confirm', [AdminDepositController::class, 'confirm']);
         
         // Gestion des packages
         Route::get('/packages', function() {

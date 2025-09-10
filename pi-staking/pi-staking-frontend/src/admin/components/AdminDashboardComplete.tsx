@@ -70,6 +70,7 @@ import { stakingService } from '@/services/stakingService';
 
 // Import du dashboard de parrainage
 import { AdminReferralDashboard } from '@/components/AdminReferralDashboard';
+import AdminDeposits from './AdminDeposits';
 
 interface AdminDashboardCompleteProps {
   onLogout: () => void;
@@ -400,7 +401,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
       <div className="relative z-10 border-b border-border/50 bg-card/60 backdrop-blur-sm">
         <div className="container mx-auto px-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-9 h-14">
+            <TabsList className="grid w-full grid-cols-10 h-14">
               <TabsTrigger value="overview" className="flex flex-col items-center gap-1 text-xs">
                 <BarChart3 className="h-4 w-4" />
                 Vue d'ensemble
@@ -412,6 +413,10 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 text-xs">
                 <DollarSign className="h-4 w-4" />
                 Transactions
+              </TabsTrigger>
+              <TabsTrigger value="deposits" className="flex flex-col items-center gap-1 text-xs">
+                <DollarSign className="h-4 w-4" />
+                Dépôts
               </TabsTrigger>
               <TabsTrigger value="packages" className="flex flex-col items-center gap-1 text-xs">
                 <Target className="h-4 w-4" />
@@ -868,6 +873,11 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </Table>
               </CardContent>
             </GlowCard>
+          </TabsContent>
+
+          {/* Dépôts */}
+          <TabsContent value="deposits" className="space-y-6">
+            <AdminDeposits />
           </TabsContent>
 
           {/* Gestion Packages */}
