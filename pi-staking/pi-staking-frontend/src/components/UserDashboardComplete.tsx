@@ -59,6 +59,7 @@ import { claimsService } from '../services/claimsService';
 
 // Import du composant Parrainage
 import { ReferralDashboard } from './ReferralDashboard';
+import { DepositModal } from './DepositModal';
 
 interface UserDashboardCompleteProps {
   onLogout: () => void;
@@ -101,6 +102,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const [showInvestModal, setShowInvestModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<StakingPackage | null>(null);
 
   // État pour les formulaires
@@ -524,10 +526,15 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
           <TabsContent value="staking" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Packages de Staking</h2>
-              <Button onClick={() => refreshAllData()} variant="outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={() => setShowDepositModal(true)} className="pi-gradient text-white hover:pi-gradient-hover">
+                  Faire un dépôt
+                </Button>
+                <Button onClick={() => refreshAllData()} variant="outline">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Actualiser
+                </Button>
+              </div>
             </div>
 
             {/* Packages disponibles */}
@@ -590,6 +597,9 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Mes Investissements</h2>
               <div className="flex gap-2">
+                <Button onClick={() => setShowDepositModal(true)} className="pi-gradient text-white hover:pi-gradient-hover">
+                  Faire un dépôt
+                </Button>
                 <Button onClick={() => refreshAllData()} variant="outline">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Actualiser
@@ -1086,6 +1096,9 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Modal de dépôt */}
+      <DepositModal open={showDepositModal} onOpenChange={setShowDepositModal} />
 
       {/* Modal d'investissement */}
       <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>
