@@ -274,7 +274,7 @@ class ClaimController extends Controller
                 'today' => [
                     'date' => $today,
                     'claims_made' => $todayClaims->count(),
-                    'total_claimed_today' => $todayClaims->sum('amount'),
+                    'total_claimed_today' => $todayClaims->sum('final_amount'),
                     'claims_detail' => $todayClaims,
                 ],
                 'available_now' => [
@@ -316,10 +316,10 @@ class ClaimController extends Controller
             'total_claims' => $claims->count(),
             'total_claimed' => $user->total_claimed,
             'claims_this_week' => $claims->where('created_at', '>=', now()->startOfWeek())->count(),
-            'claimed_this_week' => $claims->where('created_at', '>=', now()->startOfWeek())->sum('amount'),
+            'claimed_this_week' => $claims->where('created_at', '>=', now()->startOfWeek())->sum('final_amount'),
             'claims_this_month' => $claims->where('created_at', '>=', now()->startOfMonth())->count(),
-            'claimed_this_month' => $claims->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
-            'average_claim_amount' => round($claims->avg('amount') ?? 0, 4),
+            'claimed_this_month' => $claims->where('created_at', '>=', now()->startOfMonth())->sum('final_amount'),
+            'average_claim_amount' => round($claims->avg('final_amount') ?? 0, 4),
             'largest_single_claim' => round($claims->max('amount') ?? 0, 4),
             'last_claim_date' => $claims->latest()->value('created_at'),
             'current_streak' => $user->currentStreak?->current_streak ?? 0,

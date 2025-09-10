@@ -211,7 +211,7 @@ interface StakingContextType {
   
   // Actions des investissements
   loadInvestments: () => Promise<void>;
-  createInvestment: (packageId: string, amount: number) => Promise<boolean>;
+  createInvestment: (packageId: string, amount: number, source?: 'funds' | 'bonus') => Promise<boolean>;
   getInvestmentDetails: (investmentId: string) => Promise<any>;
   calculateEarnings: (packageId: string, amount: number, duration?: number) => Promise<any>;
   
@@ -334,10 +334,10 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   };
 
   // Créer un investissement
-  const createInvestment = async (packageId: string, amount: number): Promise<boolean> => {
+  const createInvestment = async (packageId: string, amount: number, source: 'funds' | 'bonus' = 'funds'): Promise<boolean> => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
-      const response = await stakingService.createInvestment(packageId, amount);
+      const response = await stakingService.createInvestment(packageId, amount, source);
       
       if (response.success) {
         dispatch({ type: 'ADD_INVESTMENT', payload: response.data });
@@ -429,9 +429,9 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
           id: response.data.claim_id,
           user_id: authState.user?.id?.toString() || '',
           investment_id: investmentId,
-          amount: response.data.amount,
+          final_amount: response.data.amount,
           claimed_at: new Date().toISOString(),
-          status: 'completed',
+          status: 'processed',
           transaction_hash: response.data.transaction_hash,
           investment: {
             id: investmentId,
@@ -618,7 +618,7 @@ export const StakingProvider: React.FC<StakingProviderProps> = ({ children }) =>
   const getNextClaimTime = (): Date | null => {
     const nextClaimDates = state.claimableInvestments
       .filter(inv => !inv.can_claim)
-      .map(inv => new Date(inv.next_claim_available_at))
+      .map(inv => new Date(inv.next_claim_at))
       .sort((a, b) => a.getTime() - b.getTime());
     
     return nextClaimDates[0] || null;

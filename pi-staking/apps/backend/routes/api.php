@@ -335,10 +335,13 @@ Route::middleware('auth:sanctum')->group(function () {
                 'daily_rate' => 'required|numeric|min:0|max:1',
                 'min_amount' => 'required|numeric|min:0',
                 'max_amount' => 'nullable|numeric|min:0',
+                'duration_days' => 'required|integer|min:1',
                 'max_duration_days' => 'required|integer|min:1',
-                'deposit_fee_rate' => 'required|numeric|min:0|max:1',
-                'performance_fee_rate' => 'required|numeric|min:0|max:1',
-                'is_active' => 'required|boolean'
+                'is_active' => 'required|boolean',
+                'is_discovery_bonus' => 'nullable|boolean',
+                'max_concurrent' => 'nullable|integer|min:1',
+                'features' => 'nullable|array',
+                'sort_order' => 'nullable|integer'
             ]);
             
             $package = \App\Models\StakingPackage::create($validated);
@@ -346,10 +349,22 @@ Route::middleware('auth:sanctum')->group(function () {
         });
         Route::patch('/packages/{package}', function($packageId) {
             $package = \App\Models\StakingPackage::findOrFail($packageId);
-            $package->update(request()->only([
-                'name', 'description', 'daily_rate', 'min_amount', 'max_amount',
-                'max_duration_days', 'deposit_fee_rate', 'performance_fee_rate', 'is_active'
-            ]));
+            $data = request()->validate([
+                'name' => 'sometimes|string|max:255',
+                'description' => 'nullable|string',
+                'level' => 'sometimes|in:discovery,bronze,silver,gold,diamond',
+                'daily_rate' => 'sometimes|numeric|min:0|max:1',
+                'min_amount' => 'sometimes|numeric|min:0',
+                'max_amount' => 'nullable|numeric|min:0',
+                'duration_days' => 'sometimes|integer|min:1',
+                'max_duration_days' => 'sometimes|integer|min:1',
+                'is_active' => 'sometimes|boolean',
+                'is_discovery_bonus' => 'sometimes|boolean',
+                'max_concurrent' => 'nullable|integer|min:1',
+                'features' => 'nullable|array',
+                'sort_order' => 'nullable|integer'
+            ]);
+            $package->update($data);
             return response()->json(['success' => true, 'data' => $package]);
         });
         

@@ -90,10 +90,12 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
     setInvestment(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const response = await stakingService.createInvestment({
-        amount: investment.amount,
-        package_id: investment.selectedPackage.id
-      });
+      const source = investment.selectedPackage.level === 'discovery' ? 'bonus' : 'funds';
+      const response = await stakingService.createInvestment(
+        investment.selectedPackage.id,
+        investment.amount,
+        source
+      );
 
       if (response.success) {
         setInvestment(prev => ({ ...prev, step: 3, isLoading: false }));
@@ -226,17 +228,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                   </div>
                 </div>
 
-                {/* Fees */}
-                {(pkg.deposit_fee_rate > 0 || pkg.performance_fee_rate > 0) && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    {pkg.deposit_fee_rate > 0 && (
-                      <p>• Frais de dépôt: {(pkg.deposit_fee_rate * 100).toFixed(2)}%</p>
-                    )}
-                    {pkg.performance_fee_rate > 0 && (
-                      <p>• Frais de performance: {(pkg.performance_fee_rate * 100).toFixed(2)}%</p>
-                    )}
-                  </div>
-                )}
+                {/* Fees removed: backend no longer exposes these fields */}
 
                 <Button 
                   onClick={() => handleSelectPackage(pkg)}

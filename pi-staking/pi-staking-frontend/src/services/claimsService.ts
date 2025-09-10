@@ -7,7 +7,7 @@ export interface ClaimableInvestment {
   amount: number;
   claimable_amount: number;
   last_claimed_at: string | null;
-  next_claim_available_at: string;
+  next_claim_at: string;
   can_claim: boolean;
   daily_rate: number;
   days_since_last_claim: number;
@@ -26,9 +26,9 @@ export interface ClaimHistory {
   id: string;
   user_id: string;
   investment_id: string;
-  amount: number;
+  final_amount: number;
   claimed_at: string;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'processed' | 'failed';
   transaction_hash: string | null;
   investment: {
     id: string;
@@ -262,8 +262,8 @@ class ClaimsService {
           }
           
           // Trouver la prochaine date de réclamation
-          if (!nextClaimDate || investment.next_claim_available_at < nextClaimDate) {
-            nextClaimDate = investment.next_claim_available_at;
+          if (!nextClaimDate || investment.next_claim_at < nextClaimDate) {
+            nextClaimDate = investment.next_claim_at;
           }
         });
       }

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             InitialStakingPackagesSeeder::class,
             AdminUserSeeder::class,
+            DemoDataSeeder::class,
         ]);
         
         // Optionnel : créer des utilisateurs factices pour les tests

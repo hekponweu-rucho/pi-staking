@@ -41,12 +41,12 @@ class StakingController extends Controller
     public function createInvestment(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'package_id' => 'required|integer|exists:staking_packages,id',
+            'staking_package_id' => 'required|integer|exists:staking_packages,id',
             'amount' => 'required|numeric|min:0.01',
             'source' => 'required|in:funds,bonus',
         ], [
-            'package_id.required' => 'Le package de staking est requis.',
-            'package_id.exists' => 'Package de staking invalide.',
+            'staking_package_id.required' => 'Le package de staking est requis.',
+            'staking_package_id.exists' => 'Package de staking invalide.',
             'amount.required' => 'Le montant est requis.',
             'amount.min' => 'Le montant minimum est de 0.01 Pi.',
             'source.required' => 'La source de financement est requise.',
@@ -62,7 +62,7 @@ class StakingController extends Controller
         }
 
         $user = $request->user();
-        $package = StakingPackage::find($request->package_id);
+        $package = StakingPackage::find($request->staking_package_id);
         
         if (!$package) {
             return response()->json([
@@ -190,7 +190,7 @@ class StakingController extends Controller
     public function calculatePotentialEarnings(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'package_id' => 'required|integer|exists:staking_packages,id',
+            'staking_package_id' => 'required|integer|exists:staking_packages,id',
             'amount' => 'required|numeric|min:0.01',
         ]);
 
@@ -202,7 +202,7 @@ class StakingController extends Controller
             ], 422);
         }
 
-        $package = StakingPackage::find($request->package_id);
+        $package = StakingPackage::find($request->staking_package_id);
         $amount = $request->amount;
         
         if (!$package->isValidAmount($amount)) {

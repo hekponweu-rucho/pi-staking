@@ -183,7 +183,7 @@ export interface RateAdjustment {
   
   // Target
   level: 'discovery' | 'bronze' | 'silver' | 'gold' | 'diamond' | 'all';
-  package_id: number | null;
+  staking_package_id: number | null;
   
   // Rates
   old_rate: number;

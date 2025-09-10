@@ -86,13 +86,13 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
 
   const canClaimInvestment = (investment: Investment) => {
     if (investment.status !== 'active') return false;
-    if (!investment.next_claim_available_at) return false;
+    if (!investment.next_claim_at) return false;
     
-    return new Date() >= new Date(investment.next_claim_available_at);
+    return new Date() >= new Date(investment.next_claim_at);
   };
 
   const calculateExpectedClaimAmount = (investment: Investment) => {
-    return investment.amount * investment.effective_rate;
+    return investment.amount * investment.daily_rate;
   };
 
   const handleClaimSuccess = () => {
@@ -194,7 +194,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {activeInvestments.reduce((sum, inv) => sum + (inv.amount * inv.effective_rate), 0).toFixed(2)} π
+              {activeInvestments.reduce((sum, inv) => sum + (inv.amount * inv.daily_rate), 0).toFixed(2)} π
             </div>
             <p className="text-xs text-muted-foreground">
               Estimés par jour
@@ -232,11 +232,11 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                 return (
                   <TableRow key={investment.id}>
                     <TableCell className="font-medium">
-                      {investment.package?.name || `Package #${investment.package_id}`}
+                      {investment.package?.name || `Package #${investment.staking_package_id}`}
                     </TableCell>
                     <TableCell>{investment.amount.toFixed(2)} π</TableCell>
                     <TableCell className="text-green-600">
-                      {(investment.effective_rate * 100).toFixed(2)}%/jour
+                      {(investment.daily_rate * 100).toFixed(2)}%/jour
                     </TableCell>
                     <TableCell>
                       <div className="w-full">
@@ -253,8 +253,8 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                       {investment.claimed_amount.toFixed(2)} π
                     </TableCell>
                     <TableCell>
-                      {investment.next_claim_available_at ? (
-                        <ClaimTimer targetTime={new Date(investment.next_claim_available_at)} />
+                      {investment.next_claim_at ? (
+                        <ClaimTimer targetTime={new Date(investment.next_claim_at)} />
                       ) : (
                         <span className="text-muted-foreground">Non disponible</span>
                       )}
@@ -295,7 +295,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                 .map(investment => (
                   <div key={investment.id} className="flex items-center justify-between p-3 border rounded-lg bg-green-50">
                     <div>
-                      <p className="font-medium">{investment.package?.name || `Package #${investment.package_id}`}</p>
+                      <p className="font-medium">{investment.package?.name || `Package #${investment.staking_package_id}`}</p>
                       <p className="text-sm text-muted-foreground">
                         Réclamation disponible maintenant
                       </p>

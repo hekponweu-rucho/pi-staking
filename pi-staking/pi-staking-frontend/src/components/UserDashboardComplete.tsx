@@ -105,7 +105,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
   // État pour les formulaires
   const [investmentForm, setInvestmentForm] = useState({
-    package_id: '',
+    staking_package_id: '',
     amount: ''
   });
   const [withdrawalForm, setWithdrawalForm] = useState({
@@ -158,10 +158,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     if (!selectedPackage || !investmentForm.amount) return;
     
     try {
-      await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount));
+      const source = (selectedPackage.level === 'discovery' || (selectedPackage as any).is_discovery_bonus) ? 'bonus' : 'funds';
+      await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount), source);
       
       setShowInvestModal(false);
-      setInvestmentForm({ package_id: '', amount: '' });
+      setInvestmentForm({ staking_package_id: '', amount: '' });
       await refreshAllData();
     } catch (error) {
       console.error('Erreur investissement:', error);
@@ -570,7 +571,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     <Button 
                       onClick={() => {
                         setSelectedPackage(pkg as any);
-                        setInvestmentForm({ ...investmentForm, package_id: pkg.id });
+                        setInvestmentForm({ ...investmentForm, staking_package_id: pkg.id });
                         setShowInvestModal(true);
                       }}
                       className="w-full pi-gradient text-white hover:pi-gradient-hover"
@@ -649,10 +650,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                         <Badge variant={investment.status === 'active' ? 'default' : 'secondary'}>
                           {investment.status}
                         </Badge>
-                        {investment.next_claim_available_at && (
+                        {investment.next_claim_at && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Clock className="h-4 w-4" />
-                            Prochain claim: {formatDate(investment.next_claim_available_at)}
+                            Prochain claim: {formatDate(investment.next_claim_at)}
                           </div>
                         )}
                       </div>
