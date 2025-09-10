@@ -163,13 +163,14 @@ class StakingService
     ): Transaction {
         return Transaction::create([
             'user_id' => $user->id,
-            'type' => 'investment',
+            'type' => 'adjustment',
             'category' => 'staking',
             'amount' => -$amount,
             'balance_before' => $user->balance_pi + $amount,
             'balance_after' => $user->balance_pi,
             'status' => 'completed',
             'investment_id' => $investment->id,
+            'description' => 'Staking investment created',
             'processed_at' => now(),
         ]);
     }
