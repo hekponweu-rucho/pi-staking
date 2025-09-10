@@ -161,17 +161,39 @@ class StakingService
         float $amount,
         string $source
     ): Transaction {
+        if ($source === 'funds') {
+            return Transaction::create([
+                'user_id' => $user->id,
+                'type' => 'adjustment',
+                'category' => 'staking',
+                'amount' => -$amount,
+                'balance_before' => $user->balance_pi + $amount,
+                'balance_after' => $user->balance_pi,
+                'status' => 'completed',
+                'investment_id' => $investment->id,
+                'description' => 'Staking investment created (funds)',
+                'processed_at' => now(),
+                'metadata' => [
+                    'source' => 'funds',
+                ],
+            ]);
+        }
+
+        // Pour les bonus: ne pas impacter le solde disponible
         return Transaction::create([
             'user_id' => $user->id,
             'type' => 'adjustment',
             'category' => 'staking',
-            'amount' => -$amount,
-            'balance_before' => $user->balance_pi + $amount,
+            'amount' => 0,
+            'balance_before' => $user->balance_pi,
             'balance_after' => $user->balance_pi,
             'status' => 'completed',
             'investment_id' => $investment->id,
-            'description' => 'Staking investment created',
+            'description' => 'Staking investment created (bonus funds)',
             'processed_at' => now(),
+            'metadata' => [
+                'source' => 'bonus',
+            ],
         ]);
     }
 }

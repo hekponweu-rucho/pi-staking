@@ -67,6 +67,19 @@ class AuthController extends Controller
     }
 
     /**
+     * Retourner l'utilisateur courant
+     */
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user()->load(['activeInvestments', 'bonusGrants']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $user,
+        ]);
+    }
+
+    /**
      * Réinitialisation du mot de passe avec token
      */
     public function resetPassword(Request $request): JsonResponse
@@ -151,35 +164,47 @@ class AuthController extends Controller
     }
 
     /**
-     * Réclamer le bonus de bienvenue (exemple : 50 Pi)
+     * Réclamer le bonus de bienvenue
      */
     public function claimWelcomeBonus(Request $request): JsonResponse
     {
         $user = Auth::user();
 
-        // Vérifier si déjà attribué
-        if (BonusGrant::where('user_id', $user->id)->where('type', 'welcome')->exists()) {
+        $alreadyClaimed = (bool) $user->welcome_bonus_claimed
+            || BonusGrant::where('user_id', $user->id)
+                ->whereIn('type', ['welcome', 'welcome_bonus'])
+                ->exists();
+
+        if ($alreadyClaimed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bonus de bienvenue déjà réclamé.',
             ], 409);
         }
 
-        // Créer un enregistrement du bonus
+        $amount = (float) config('staking.bonus.discovery_amount', 50);
+        $expiresAt = now()->addDays((int) config('staking.bonus.expiration_days', 90));
+
         BonusGrant::create([
             'user_id' => $user->id,
-            'amount'  => 50, // Bonus fixe de 50 Pi
-            'type'    => 'welcome',
+            'type' => 'welcome',
+            'amount' => $amount,
+            'expires_at' => $expiresAt,
+            'is_used' => false,
+            'description' => 'Bonus de bienvenue',
         ]);
 
-        // Exemple : incrémenter le solde utilisateur
-        $user->increment('balance', 50);
+        $user->increment('bonus_balance', $amount);
+        $user->update(['welcome_bonus_claimed' => true]);
 
         return response()->json([
             'success' => true,
             'message' => 'Bonus de bienvenue réclamé avec succès.',
-            'amount'  => 50,
-            'balance' => $user->balance,
+            'data' => [
+                'amount' => $amount,
+                'bonus_balance' => (float) $user->fresh()->bonus_balance,
+                'user' => $user->fresh(),
+            ],
         ]);
     }
 }

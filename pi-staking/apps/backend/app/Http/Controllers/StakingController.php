@@ -9,6 +9,9 @@ use App\Services\UserLevelService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use App\Models\BonusGrant;
+use App\Models\Transaction;
 
 class StakingController extends Controller
 {
@@ -94,6 +97,124 @@ class StakingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Réinvestir le bonus de bienvenue dans le package Discovery
+     */
+    public function reinvestBonus(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user->welcome_bonus_claimed) {
+            return response()->json([
+                'success' => false,
+                'message' => "Vous n'avez pas encore réclamé votre bonus de bienvenue."
+            ], 422);
+        }
+
+        if ($user->welcome_bonus_reinvested) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le bonus de bienvenue a déjà été réinvesti.'
+            ], 409);
+        }
+
+        $defaultAmount = (float) config('staking.bonus.discovery_amount', 50);
+        $availableBonus = (float) ($user->bonus_balance ?? 0);
+
+        $grant = BonusGrant::where('user_id', $user->id)
+            ->whereIn('type', ['welcome', 'welcome_bonus'])
+            ->where('is_used', false)
+            ->first();
+
+        $bonusAmount = $grant?->amount ?? ($availableBonus > 0 ? min($availableBonus, $defaultAmount) : $defaultAmount);
+
+        if ($bonusAmount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun bonus disponible à réinvestir.'
+            ], 422);
+        }
+
+        // Récupérer ou créer le package Discovery
+        $package = StakingPackage::where('is_discovery_bonus', true)->first();
+        if (!$package) {
+            $package = StakingPackage::create([
+                'name' => 'Discovery',
+                'description' => 'Package de découverte réservé au bonus de bienvenue',
+                'daily_rate' => config('staking.rates.discovery', 0.025),
+                'min_amount' => 0,
+                'max_amount' => null,
+                'duration_days' => config('staking.bonus.discovery_days', 30),
+                'level_requirement' => 'discovery',
+                'is_active' => true,
+                'is_discovery_bonus' => true,
+                'max_concurrent' => 1,
+                'features' => [
+                    'uses_bonus_funds' => true,
+                    'limited_duration' => true,
+                    'one_time_only' => true,
+                ],
+                'sort_order' => -10,
+            ]);
+        }
+
+        try {
+            $investment = DB::transaction(function () use ($user, $package, $bonusAmount, $grant, $availableBonus) {
+                // Créer l'investissement avec source bonus
+                $investment = $this->stakingService->createInvestment($user, $package, $bonusAmount, 'bonus');
+
+                // Débiter le solde bonus utilisateur et marquer le drapeau de réinvestissement
+                $beforeBonus = (float) ($user->bonus_balance ?? 0);
+                if ($beforeBonus > 0) {
+                    $user->decrement('bonus_balance', min($beforeBonus, $bonusAmount));
+                }
+
+                $user->update(['welcome_bonus_reinvested' => true]);
+
+                // Marquer le grant comme utilisé si présent
+                if ($grant) {
+                    $grant->update(['is_used' => true]);
+                }
+
+                // Créer une transaction de traçabilité pour le bonus (source = welcome)
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'type' => 'bonus',
+                    'category' => 'bonus',
+                    'amount' => 0,
+                    'balance_before' => $user->balance_pi,
+                    'balance_after' => $user->balance_pi,
+                    'status' => 'completed',
+                    'investment_id' => $investment->id,
+                    'description' => 'Réinvestissement du bonus de bienvenue dans le package Discovery',
+                    'processed_at' => now(),
+                    'metadata' => [
+                        'source' => 'welcome',
+                        'bonus_before' => $beforeBonus,
+                        'bonus_after' => max(0, $beforeBonus - $bonusAmount),
+                        'reinvested_amount' => $bonusAmount,
+                        'package' => $package->name,
+                    ],
+                ]);
+
+                return $investment;
+            });
+
+            $investment->load('stakingPackage');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bonus réinvesti avec succès',
+                'data' => $investment,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         }
     }

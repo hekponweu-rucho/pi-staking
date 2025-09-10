@@ -144,6 +144,17 @@ class StakingService {
     }
   }
 
+  // Réinvestir le bonus de bienvenue (Discovery)
+  async reinvestBonus(): Promise<{ success: boolean; message: string; data: any }> {
+    try {
+      const response = await api.post('/staking/reinvest-bonus');
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors du réinvestissement du bonus:', error);
+      throw error;
+    }
+  }
+
   // Calculer les statistiques de staking pour l'utilisateur
   async getStakingStats(): Promise<{
     success: boolean;
