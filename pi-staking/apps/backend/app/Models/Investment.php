@@ -7,10 +7,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Log;
 
 class Investment extends Model
 {
     use HasFactory;
+
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_FAILED = 'failed';
 
     protected $fillable = [
         'user_id',
@@ -194,7 +200,7 @@ class Investment extends Model
 
         // Vérifier si l'investissement est terminé
         if ($this->end_at && now()->isAfter($this->end_at)) {
-            $this->update(['status' => 'completed']);
+            $this->transitionTo(self::STATUS_COMPLETED);
         }
 
         return $claim;
@@ -250,5 +256,51 @@ class Investment extends Model
         $elapsedDays = $this->start_at->diffInDays(now());
 
         return min(100, ($elapsedDays / $totalDays) * 100);
+    }
+
+    public function transitionTo(string $newStatus, ?int $actorId = null, array $metadata = []): bool
+    {
+        $current = $this->status;
+        $allowed = [
+            self::STATUS_ACTIVE => [self::STATUS_COMPLETED, self::STATUS_CANCELLED, self::STATUS_FAILED],
+            self::STATUS_CANCELLED => [],
+            self::STATUS_FAILED => [],
+            self::STATUS_COMPLETED => [],
+        ];
+
+        if (!isset($allowed[$current]) || !in_array($newStatus, $allowed[$current], true)) {
+            Log::channel('daily')->warning('Transition de statut investissement invalide', [
+                'investment_id' => $this->id,
+                'user_id' => $this->user_id,
+                'status_before' => $current,
+                'status_after' => $newStatus,
+            ]);
+            return false;
+        }
+
+        $this->update(['status' => $newStatus]);
+
+        Log::channel('daily')->info('Changement de statut investissement', [
+            'investment_id' => $this->id,
+            'user_id' => $this->user_id,
+            'status_before' => $current,
+            'status_after' => $newStatus,
+            'metadata' => $metadata,
+        ]);
+
+        if (class_exists(\App\Models\Audit::class)) {
+            \App\Models\Audit::create([
+                'actor_id' => $actorId,
+                'action' => 'investment.status_change',
+                'auditable_type' => self::class,
+                'auditable_id' => $this->id,
+                'event' => 'updated',
+                'old_values' => ['status' => $current],
+                'new_values' => ['status' => $newStatus],
+                'metadata' => $metadata,
+            ]);
+        }
+
+        return true;
     }
 }

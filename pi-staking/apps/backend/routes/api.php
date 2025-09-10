@@ -11,6 +11,8 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
+use App\Http\Controllers\DepositController;
+use App\Http\Controllers\AdminDepositController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,6 +74,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/statistics', [ClaimController::class, 'getClaimStatistics']);
         Route::post('/bulk-claim', [ClaimController::class, 'bulkClaim']);
         Route::post('/simulate-earnings', [ClaimController::class, 'simulateEarnings']);
+    });
+
+    // Dépôts Pi
+    Route::prefix('deposit')->group(function () {
+        Route::post('/request', [DepositController::class, 'requestAddress']);
+        Route::get('/status/{id}', [DepositController::class, 'status']);
     });
 
     // Gestion des transactions
@@ -300,6 +308,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Dashboard admin principal
         Route::get('/dashboard', [AdminController::class, 'getDashboardStats']);
         Route::get('/analytics', [AdminController::class, 'getAnalytics']);
+        // Dépôts (admin)
+        Route::get('/deposits', [AdminDepositController::class, 'index']);
+        Route::post('/deposits/{id}/expire', [AdminDepositController::class, 'expire']);
+        Route::post('/deposits/{id}/confirm', [AdminDepositController::class, 'confirm']);
         
         // Gestion des utilisateurs
         Route::get('/users', [AdminController::class, 'getUsers']);
