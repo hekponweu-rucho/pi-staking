@@ -12,6 +12,7 @@ use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
 use App\Http\Controllers\DepositController;
+use App\Http\Controllers\AdminDepositController;
 
 /*
 |--------------------------------------------------------------------------
@@ -307,6 +308,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Dashboard admin principal
         Route::get('/dashboard', [AdminController::class, 'getDashboardStats']);
         Route::get('/analytics', [AdminController::class, 'getAnalytics']);
+        // Dépôts (admin)
+        Route::get('/deposits', [AdminDepositController::class, 'index']);
+        Route::post('/deposits/{id}/expire', [AdminDepositController::class, 'expire']);
+        Route::post('/deposits/{id}/confirm', [AdminDepositController::class, 'confirm']);
         
         // Gestion des utilisateurs
         Route::get('/users', [AdminController::class, 'getUsers']);
