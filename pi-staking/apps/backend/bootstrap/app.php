@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Configuration\Schedule;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -19,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         
         // Appliquer Sanctum aux routes API
         $middleware->statefulApi();
+    })
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('staking:process-daily-earnings')->dailyAt('02:00')->timezone(config('app.timezone'));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Gestion personnalisée des exceptions pour l'API

@@ -29,6 +29,9 @@ class ClaimService
             // Créditer le solde utilisateur
             $user->increment('balance_pi', $amount);
             $user->increment('total_claimed', $amount);
+            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'total_earned')) {
+                $user->increment('total_earned', $amount);
+            }
 
             // Mettre à jour l'investissement
             $this->updateInvestmentAfterClaim($investment, $amount);
