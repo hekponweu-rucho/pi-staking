@@ -24,6 +24,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'balance_pi',
+        'bonus_balance',
         'total_invested',
         'total_earned',
         'total_claimed',
@@ -43,6 +44,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'notification_preferences',
         'timezone',
         'language',
+        'welcome_bonus_claimed',
+        'welcome_bonus_reinvested',
     ];
 
     /**
@@ -66,6 +69,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'last_login_at' => 'datetime',
             'locked_until' => 'datetime',
             'balance_pi' => 'decimal:8',
+            'bonus_balance' => 'decimal:8',
             'total_invested' => 'decimal:8',
             'total_earned' => 'decimal:8',
             'total_claimed' => 'decimal:8',
@@ -76,6 +80,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'failed_login_attempts' => 'integer',
             'loyalty_points' => 'integer',
             'total_referrals' => 'integer',
+            'welcome_bonus_claimed' => 'boolean',
+            'welcome_bonus_reinvested' => 'boolean',
         ];
     }
 
@@ -181,7 +187,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
         
         if ($source === 'bonus') {
-            return $this->getAvailableBonusAmount() >= $amount;
+            return (float) $this->bonus_balance >= $amount;
         }
         
         return false;
@@ -192,14 +198,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getAvailableBonusAmount(): float
     {
-        return $this->bonusGrants()
-            ->where('is_used', false)
-            ->where('is_expired', false)
-            ->where(function ($query) {
-                $query->whereNull('expires_at')
-                    ->orWhere('expires_at', '>', now());
-            })
-            ->sum('remaining_amount');
+        return (float) $this->bonus_balance;
     }
 
     /**

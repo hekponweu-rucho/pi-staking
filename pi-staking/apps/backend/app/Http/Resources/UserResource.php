@@ -26,6 +26,8 @@ class UserResource extends JsonResource
             'bonus_balance' => (float) $this->bonus_balance,
             'total_invested' => (float) $this->total_invested,
             'total_claimed' => (float) $this->total_claimed,
+            'welcome_bonus_claimed' => (bool) $this->welcome_bonus_claimed,
+            'welcome_bonus_reinvested' => (bool) $this->welcome_bonus_reinvested,
             
             // Level system
             'current_level' => $this->current_level,
