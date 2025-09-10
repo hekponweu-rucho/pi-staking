@@ -10,6 +10,7 @@ import { GlowCard } from './GlowCard';
 import { AnimatedCounter } from './AnimatedCounter';
 import { stakingService, StakingPackage } from '@/services/stakingService';
 import { useAuth } from '@/contexts/AuthContext';
+import { DepositModal } from './DepositModal';
 import { 
   Loader2, 
   Plus, 
@@ -45,6 +46,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
   });
   
   const { user, refreshUser } = useAuth();
+  const [showDepositModal, setShowDepositModal] = useState(false);
 
   useEffect(() => {
     fetchPackages();
@@ -153,11 +155,16 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Packages de Staking Disponibles</h2>
-        <p className="text-muted-foreground mb-6">
-          Choisissez le package qui correspond à votre profil d'investissement et commencez à gagner des récompenses quotidiennes.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold mb-2">Packages de Staking Disponibles</h2>
+          <p className="text-muted-foreground mb-2">
+            Choisissez le package qui correspond à votre profil d'investissement et commencez à gagner des récompenses quotidiennes.
+          </p>
+        </div>
+        <Button onClick={() => setShowDepositModal(true)} className="pi-gradient text-white hover:pi-gradient-hover">
+          Faire un dépôt
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -257,6 +264,9 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
           );
         })}
       </div>
+
+      {/* Deposit Modal */}
+      <DepositModal open={showDepositModal} onOpenChange={setShowDepositModal} />
 
       {/* Investment Modal */}
       <Dialog open={showInvestModal} onOpenChange={(open) => !open && resetModal()}>
