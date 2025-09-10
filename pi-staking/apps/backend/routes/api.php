@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
+use App\Http\Controllers\DepositController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,6 +73,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/statistics', [ClaimController::class, 'getClaimStatistics']);
         Route::post('/bulk-claim', [ClaimController::class, 'bulkClaim']);
         Route::post('/simulate-earnings', [ClaimController::class, 'simulateEarnings']);
+    });
+
+    // Dépôts Pi
+    Route::prefix('deposit')->group(function () {
+        Route::post('/request', [DepositController::class, 'requestAddress']);
+        Route::get('/status/{id}', [DepositController::class, 'status']);
     });
 
     // Gestion des transactions
