@@ -108,8 +108,8 @@ class DemoDataSeeder extends Seeder
                 $investment->update([
                     'last_claim_at' => $claim->claimed_at,
                     'next_claim_at' => now()->addDay(),
-                    'total_claimed' => DB::raw('total_claimed + ' . $finalAmount),
-                    'claims_count' => DB::raw('claims_count + 1'),
+                    'total_claimed' => $investment->total_claimed + $finalAmount,
+                    'claims_count' => $investment->claims_count + 1,
                 ]);
 
                 // Credit user balance and totals
