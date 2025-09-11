@@ -20,6 +20,8 @@ class DemoDataSeeder extends Seeder
             $demo = User::firstOrCreate(
                 ['email' => 'demo@progressiverewards.com'],
                 [
+                    'first_name' => 'Demo',
+                    'last_name' => 'User',
                     'username' => 'demo',
                     'password' => Hash::make('demo123!'),
                     'current_level' => 'bronze',
