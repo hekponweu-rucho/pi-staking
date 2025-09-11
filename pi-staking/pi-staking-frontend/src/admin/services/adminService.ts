@@ -91,6 +91,34 @@ export interface SystemAlert {
 class AdminService {
   private baseUrl = '/api/admin';
 
+  // Retraits
+  async getWithdrawals(params: {
+    page?: number;
+    per_page?: number;
+    status?: 'pending' | 'reviewing' | 'approved' | 'processing' | 'completed' | 'rejected' | 'cancelled';
+    user_id?: number;
+    date_from?: string;
+    date_to?: string;
+  } = {}) {
+    const response = await api.get(`${this.baseUrl}/withdrawals`, { params });
+    return response.data;
+  }
+
+  async updateWithdrawal(id: number, data: { action: 'approve' | 'reject'; reason?: string; admin_notes?: string; }) {
+    const response = await api.patch(`${this.baseUrl}/withdrawals/${id}`, data);
+    return response.data;
+  }
+
+  async exportTransactionsCsv(params: {
+    type?: string;
+    status?: string;
+    date_from?: string;
+    date_to?: string;
+  } = {}) {
+    const response = await api.get(`${this.baseUrl}/transactions/export`, { params, responseType: 'blob' });
+    return response.data as Blob;
+  }
+
   // Authentification admin
   async checkAdminAccess(): Promise<boolean> {
     try {
@@ -187,16 +215,13 @@ class AdminService {
     page?: number;
     type?: 'critical' | 'warning' | 'info';
     resolved?: boolean;
-  } = {}): Promise<{
-    data: SystemAlert[];
-    pagination: any;
-    summary: {
-      critical_count: number;
-      warning_count: number;
-      unresolved_count: number;
-    };
-  }> {
+  } = {}): Promise<any> {
     const response = await api.get(`${this.baseUrl}/alerts`, { params });
+    return response.data;
+  }
+
+  async createAlert(data: { title: string; message: string; severity?: 'low' | 'medium' | 'high' | 'critical'; type?: string; }): Promise<any> {
+    const response = await api.post(`${this.baseUrl}/alerts`, data);
     return response.data;
   }
 

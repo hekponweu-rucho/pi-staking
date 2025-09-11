@@ -71,6 +71,9 @@ import { stakingService } from '@/services/stakingService';
 // Import du dashboard de parrainage
 import { AdminReferralDashboard } from '@/components/AdminReferralDashboard';
 import { AdminDeposits } from './AdminDeposits';
+import adminService from '../services/adminService';
+import { AdminWithdrawals } from './AdminWithdrawals';
+import { toast } from 'sonner';
 
 interface AdminDashboardCompleteProps {
   onLogout: () => void;
@@ -102,14 +105,37 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
   
   const [users, setUsers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [txMeta, setTxMeta] = useState<any>(null);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txError, setTxError] = useState<string | null>(null);
   const [packages, setPackages] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
   const [systemLogs, setSystemLogs] = useState<any[]>([]);
   
   // États pour les filtres et recherche
   const [userFilter, setUserFilter] = useState('');
   const [transactionFilter, setTransactionFilter] = useState('all');
   const [dateRange, setDateRange] = useState('7days');
+
+  const [txFilters, setTxFilters] = useState({
+    type: '',
+    status: '',
+    user_id: '',
+    date_from: '',
+    date_to: '',
+    min_amount: '',
+    max_amount: '',
+    sort_by: 'created_at',
+    sort_dir: 'desc',
+    page: 1,
+    per_page: 20,
+  });
+
+  const [configState, setConfigState] = useState<any | null>(null);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
   
   // États pour les modales
   const [showUserModal, setShowUserModal] = useState(false);
@@ -144,8 +170,9 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
     loadTransactions();
     loadPackages();
     loadSystemHealth();
+    loadAlerts();
+    loadConfig();
     
-    // Actualiser toutes les 30 secondes
     const interval = setInterval(() => {
       loadAdminData();
       loadSystemHealth();
@@ -173,34 +200,9 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
 
   const loadUsers = async () => {
     try {
-      // Simuler un appel API pour les utilisateurs
-      const mockUsers = [
-        {
-          id: 1,
-          username: 'john_doe',
-          email: 'john@example.com',
-          balance_pi: 1250.5,
-          total_invested: 500,
-          total_earned: 75.25,
-          status: 'active',
-          is_verified: true,
-          last_login: '2024-01-15T10:30:00Z',
-          created_at: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 2,
-          username: 'jane_smith',
-          email: 'jane@example.com',
-          balance_pi: 850.75,
-          total_invested: 300,
-          total_earned: 45.50,
-          status: 'active',
-          is_verified: true,
-          last_login: '2024-01-14T15:45:00Z',
-          created_at: '2024-01-02T00:00:00Z'
-        }
-      ];
-      setUsers(mockUsers);
+      const res = await adminService.getUsers({ per_page: 20 });
+      const data = (res?.data as any)?.data || res?.data || [];
+      setUsers(data);
     } catch (error) {
       console.error('Erreur chargement utilisateurs:', error);
     }
@@ -208,34 +210,20 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
 
   const loadTransactions = async () => {
     try {
-      const history = await transactionsService.getTransactionHistory();
-      setTransactions(history.data?.transactions?.slice(0, 50) || []); // Dernières 50 transactions
-    } catch (error) {
+      setTxLoading(true);
+      setTxError(null);
+      const params: any = { ...txFilters };
+      Object.keys(params).forEach((k) => (params[k] === '' || params[k] === null) && delete params[k]);
+      const res = await adminService.getTransactions(params);
+      const dataset = (res?.data?.data as any[]) || res?.data || [];
+      setTransactions(dataset);
+      const meta = res?.data?.meta || res?.meta || null;
+      setTxMeta(meta);
+    } catch (error: any) {
       console.error('Erreur chargement transactions:', error);
-      // Données mockées en cas d'erreur
-      const mockTransactions = [
-        {
-          id: 1,
-          user_id: 1,
-          type: 'investment',
-          amount: 100,
-          status: 'completed',
-          created_at: '2024-01-15T10:00:00Z',
-          user: { username: 'john_doe' },
-          description: 'Investissement Package Or'
-        },
-        {
-          id: 2,
-          user_id: 2,
-          type: 'withdrawal',
-          amount: -50,
-          status: 'pending',
-          created_at: '2024-01-15T11:00:00Z',
-          user: { username: 'jane_smith' },
-          description: 'Demande de retrait'
-        }
-      ];
-      setTransactions(mockTransactions);
+      setTxError(error?.message || 'Erreur de chargement');
+    } finally {
+      setTxLoading(false);
     }
   };
 
@@ -250,7 +238,6 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
 
   const loadSystemHealth = async () => {
     try {
-      // Simuler vérification santé système
       setSystemHealth({
         database: Math.random() > 0.1 ? 'healthy' : 'warning',
         api: Math.random() > 0.05 ? 'healthy' : 'error',
@@ -259,6 +246,32 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
       });
     } catch (error) {
       console.error('Erreur vérification système:', error);
+    }
+  };
+
+  const loadAlerts = async () => {
+    try {
+      setAlertsLoading(true);
+      setAlertsError(null);
+      const res = await adminService.getSystemAlerts();
+      const data = (res?.data as any) || res || [];
+      setAlerts(Array.isArray(data) ? data : (data.data || []));
+    } catch (e: any) {
+      setAlertsError(e?.message || 'Erreur de chargement des alertes');
+    } finally {
+      setAlertsLoading(false);
+    }
+  };
+
+  const loadConfig = async () => {
+    try {
+      setConfigLoading(true);
+      const cfg = await adminService.getSystemConfig();
+      setConfigState(cfg);
+    } catch (e) {
+      // noop
+    } finally {
+      setConfigLoading(false);
     }
   };
 
@@ -287,20 +300,13 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
 
   const handleTransactionAction = async (action: string, transactionId: number) => {
     try {
-      switch (action) {
-        case 'approve':
-          console.log('Approuver transaction:', transactionId);
-          break;
-        case 'reject':
-          console.log('Rejeter transaction:', transactionId);
-          break;
-        case 'cancel':
-          console.log('Annuler transaction:', transactionId);
-          break;
-      }
+      // Placeholder: backend route exists for status update via PATCH /api/admin/transactions/{id}/status
+      // Not exposing in UI for now other than demo
+      toast.info(`Action ${action} sur transaction #${transactionId}`);
       await loadTransactions();
     } catch (error) {
       console.error('Erreur action transaction:', error);
+      toast.error('Action transaction échouée');
     }
   };
 
@@ -417,6 +423,10 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               <TabsTrigger value="deposits" className="flex flex-col items-center gap-1 text-xs">
                 <Wallet className="h-4 w-4" />
                 Dépôts
+              </TabsTrigger>
+              <TabsTrigger value="withdrawals" className="flex flex-col items-center gap-1 text-xs">
+                <Upload className="h-4 w-4" />
+                Retraits
               </TabsTrigger>
               <TabsTrigger value="packages" className="flex flex-col items-center gap-1 text-xs">
                 <Target className="h-4 w-4" />
@@ -734,15 +744,15 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                             {formatCurrency(user.total_invested)} π
                           </TableCell>
                           <TableCell className="font-mono text-green-600">
-                            +{formatCurrency(user.total_earned)} π
+                            +{formatCurrency(user.total_claimed || 0)} π
                           </TableCell>
                           <TableCell>
-                            <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
-                              {user.status}
+                            <Badge variant={user.is_active ? 'default' : 'destructive'}>
+                              {user.is_active ? 'active' : 'inactive'}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">
-                            {formatDate(user.last_login)}
+                            {user.last_activity ? formatDate(user.last_activity) : '-'}
                           </TableCell>
                           <TableCell>
                             <div className="flex gap-1">
@@ -785,23 +795,125 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Gestion des Transactions</h2>
               <div className="flex gap-2">
-                <Select value={transactionFilter} onValueChange={setTransactionFilter}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Toutes</SelectItem>
-                    <SelectItem value="pending">En attente</SelectItem>
-                    <SelectItem value="completed">Terminées</SelectItem>
-                    <SelectItem value="failed">Échouées</SelectItem>
-                  </SelectContent>
-                </Select>
                 <Button onClick={() => loadTransactions()} variant="outline">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Actualiser
                 </Button>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const blob = await (await import('../services/adminService')).default.exportTransactionsCsv({ ...txFilters });
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `transactions_${new Date().toISOString()}.csv`;
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      toast.success('Export CSV généré');
+                    } catch (e) {
+                      console.error('Export CSV échoué', e);
+                      toast.error('Export CSV échoué');
+                    }
+                  }}
+                >
+                  Export CSV
+                </Button>
               </div>
             </div>
+
+            {/* Filtres avancés */}
+            <GlowCard>
+              <CardContent className="grid grid-cols-1 md:grid-cols-6 gap-3 p-4">
+                <div>
+                  <Label>Type</Label>
+                  <Select value={txFilters.type} onValueChange={(v) => setTxFilters({ ...txFilters, type: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tous" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Tous</SelectItem>
+                      <SelectItem value="deposit">Dépôt</SelectItem>
+                      <SelectItem value="withdrawal">Retrait</SelectItem>
+                      <SelectItem value="investment">Investissement</SelectItem>
+                      <SelectItem value="claim">Claim</SelectItem>
+                      <SelectItem value="bonus">Bonus</SelectItem>
+                      <SelectItem value="referral">Parrainage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Statut</Label>
+                  <Select value={txFilters.status} onValueChange={(v) => setTxFilters({ ...txFilters, status: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Tous" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Tous</SelectItem>
+                      <SelectItem value="pending">En attente</SelectItem>
+                      <SelectItem value="completed">Terminées</SelectItem>
+                      <SelectItem value="rejected">Rejetées</SelectItem>
+                      <SelectItem value="cancelled">Annulées</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Utilisateur ID</Label>
+                  <Input value={txFilters.user_id} onChange={(e) => setTxFilters({ ...txFilters, user_id: e.target.value })} placeholder="#id" />
+                </div>
+                <div>
+                  <Label>Montant min</Label>
+                  <Input type="number" value={txFilters.min_amount} onChange={(e) => setTxFilters({ ...txFilters, min_amount: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Montant max</Label>
+                  <Input type="number" value={txFilters.max_amount} onChange={(e) => setTxFilters({ ...txFilters, max_amount: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Tri</Label>
+                    <Select value={txFilters.sort_by} onValueChange={(v) => setTxFilters({ ...txFilters, sort_by: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="created_at">Date</SelectItem>
+                        <SelectItem value="amount">Montant</SelectItem>
+                        <SelectItem value="status">Statut</SelectItem>
+                        <SelectItem value="type">Type</SelectItem>
+                        <SelectItem value="id">ID</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Ordre</Label>
+                    <Select value={txFilters.sort_dir} onValueChange={(v) => setTxFilters({ ...txFilters, sort_dir: v })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="desc">Desc</SelectItem>
+                        <SelectItem value="asc">Asc</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Du</Label>
+                  <Input type="date" value={txFilters.date_from} onChange={(e) => setTxFilters({ ...txFilters, date_from: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Au</Label>
+                  <Input type="date" value={txFilters.date_to} onChange={(e) => setTxFilters({ ...txFilters, date_to: e.target.value })} />
+                </div>
+                <div className="md:col-span-6 flex gap-2 justify-end pt-2">
+                  <Button variant="outline" onClick={() => { setTxFilters({ ...txFilters, type: '', status: '', user_id: '', date_from: '', date_to: '', min_amount: '', max_amount: '' }); }}>
+                    Réinitialiser
+                  </Button>
+                  <Button onClick={loadTransactions}>Appliquer</Button>
+                </div>
+              </CardContent>
+            </GlowCard>
 
             {/* Table des transactions */}
             <GlowCard>
@@ -819,9 +931,22 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {transactions
-                      .filter(tx => transactionFilter === 'all' || tx.status === transactionFilter)
-                      .map((transaction) => (
+                    {txLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Chargement des transactions...</TableCell>
+                      </TableRow>
+                    )}
+                    {txError && !txLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-red-600">{txError}</TableCell>
+                      </TableRow>
+                    )}
+                    {!txLoading && !txError && transactions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune transaction trouvée</TableCell>
+                      </TableRow>
+                    )}
+                    {!txLoading && !txError && transactions.map((transaction) => (
                         <TableRow key={transaction.id}>
                           <TableCell className="font-mono">#{transaction.id}</TableCell>
                           <TableCell>{transaction.user?.username}</TableCell>
@@ -873,11 +998,38 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </Table>
               </CardContent>
             </GlowCard>
+
+            <div className="flex justify-between items-center text-sm text-muted-foreground">
+              <div>
+                Page {txMeta?.current_page || txFilters.page} / {txMeta?.last_page || 1} • {txMeta?.total ?? transactions.length} résultats
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={(txMeta?.current_page || txFilters.page) <= 1}
+                  onClick={() => { setTxFilters((f) => ({ ...f, page: (txMeta?.current_page || f.page) - 1 })); setTimeout(loadTransactions, 0); }}
+                >
+                  Précédent
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={(txMeta?.current_page || txFilters.page) >= (txMeta?.last_page || 1)}
+                  onClick={() => { setTxFilters((f) => ({ ...f, page: (txMeta?.current_page || f.page) + 1 })); setTimeout(loadTransactions, 0); }}
+                >
+                  Suivant
+                </Button>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Dépôts */}
           <TabsContent value="deposits" className="space-y-6">
             <AdminDeposits />
+          </TabsContent>
+
+          {/* Retraits */}
+          <TabsContent value="withdrawals" className="space-y-6">
+            <AdminWithdrawals />
           </TabsContent>
 
           {/* Gestion Packages */}
@@ -1187,38 +1339,133 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
 
           {/* Alertes */}
           <TabsContent value="alerts" className="space-y-6">
-            <h2 className="text-3xl font-bold">Centre d'Alertes</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="font-medium mb-1">Retraits en attente</div>
-                  {adminStats.pendingWithdrawals} demandes nécessitent votre attention
-                </AlertDescription>
-              </Alert>
-              
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="font-medium mb-1">Système opérationnel</div>
-                  Tous les services fonctionnent normalement
-                </AlertDescription>
-              </Alert>
-              
-              <Alert>
-                <Activity className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="font-medium mb-1">Pic d'activité</div>
-                  Trafic 150% au-dessus de la normale
-                </AlertDescription>
-              </Alert>
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold">Centre d'Alertes</h2>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => loadAlerts()}><RefreshCw className="h-4 w-4 mr-2" />Actualiser</Button>
+                <Button onClick={() => setShowAlertModal(true)} className="pi-gradient text-white hover:pi-gradient-hover">
+                  <Plus className="h-4 w-4 mr-2" /> Nouvelle Alerte
+                </Button>
+              </div>
             </div>
+
+            <GlowCard>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Titre</TableHead>
+                      <TableHead>Sévérité</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Statut</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {alertsLoading && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Chargement des alertes...</TableCell></TableRow>
+                    )}
+                    {alertsError && !alertsLoading && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-red-600">{alertsError}</TableCell></TableRow>
+                    )}
+                    {!alertsLoading && !alertsError && alerts.length === 0 && (
+                      <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Aucune alerte</TableCell></TableRow>
+                    )}
+                    {!alertsLoading && !alertsError && alerts.map((a: any) => (
+                      <TableRow key={a.id}>
+                        <TableCell>#{a.id}</TableCell>
+                        <TableCell>{a.title}</TableCell>
+                        <TableCell>
+                          <Badge variant={a.severity === 'critical' ? 'destructive' : a.severity === 'high' ? 'default' : 'secondary'} className="capitalize">{a.severity}</Badge>
+                        </TableCell>
+                        <TableCell className="capitalize">{a.type}</TableCell>
+                        <TableCell>{a.is_resolved ? 'Résolue' : 'Active'}</TableCell>
+                        <TableCell className="text-sm">{a.created_at ? formatDate(a.created_at) : '-'}</TableCell>
+                        <TableCell>
+                          {!a.is_resolved && (
+                            <Button size="sm" variant="ghost" className="text-green-600" onClick={async () => { try { await adminService.resolveAlert(a.id); toast.success('Alerte résolue'); loadAlerts(); } catch { toast.error('Impossible de résoudre'); } }}>Résoudre</Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </GlowCard>
+
+            <Dialog open={showAlertModal} onOpenChange={setShowAlertModal}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Nouvelle alerte</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label>Titre</Label>
+                    <Input value={(selectedItem as any)?.title || ''} onChange={(e) => setSelectedItem({ ...(selectedItem as any), title: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Message</Label>
+                    <Textarea value={(selectedItem as any)?.message || ''} onChange={(e) => setSelectedItem({ ...(selectedItem as any), message: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Sévérité</Label>
+                      <Select value={(selectedItem as any)?.severity || 'medium'} onValueChange={(v) => setSelectedItem({ ...(selectedItem as any), severity: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="low">Faible</SelectItem>
+                          <SelectItem value="medium">Moyenne</SelectItem>
+                          <SelectItem value="high">Élevée</SelectItem>
+                          <SelectItem value="critical">Critique</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Type</Label>
+                      <Input value={(selectedItem as any)?.type || 'general'} onChange={(e) => setSelectedItem({ ...(selectedItem as any), type: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end pt-2">
+                    <Button variant="outline" onClick={() => setShowAlertModal(false)}>Annuler</Button>
+                    <Button onClick={async () => { try { await adminService.createAlert({ title: (selectedItem as any)?.title, message: (selectedItem as any)?.message, severity: (selectedItem as any)?.severity, type: (selectedItem as any)?.type }); toast.success('Alerte créée'); setShowAlertModal(false); setSelectedItem(null as any); loadAlerts(); } catch { toast.error('Création échouée'); } }}>
+                      Créer
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* Configuration */}
           <TabsContent value="settings" className="space-y-6">
-            <h2 className="text-3xl font-bold">Configuration Système</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-3xl font-bold">Configuration Système</h2>
+              <Button
+                onClick={async () => {
+                  try {
+                    setConfigSaving(true);
+                    await adminService.updateSystemConfig({
+                      maintenance_mode: !!configState?.maintenance_mode,
+                      registration_enabled: !!configState?.registration_enabled,
+                      min_withdrawal: Number(configState?.min_withdrawal || 0),
+                      max_withdrawal: Number(configState?.max_withdrawal || 0),
+                      platform_fee_rate: Number(configState?.platform_fee_rate || 0),
+                    });
+                    toast.success('Configuration enregistrée');
+                  } catch {
+                    toast.error('Échec de la sauvegarde');
+                  } finally {
+                    setConfigSaving(false);
+                  }
+                }}
+                disabled={configSaving}
+                variant="outline"
+              >
+                {configSaving ? 'Enregistrement...' : 'Enregistrer'}
+              </Button>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <GlowCard>
@@ -1233,7 +1480,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                         Suspendre temporairement l'accès
                       </p>
                     </div>
-                    <Switch />
+                    <Switch checked={!!configState?.maintenance_mode} onCheckedChange={(v) => setConfigState({ ...configState, maintenance_mode: v })} />
                   </div>
                   
                   <div className="flex items-center justify-between">
@@ -1243,39 +1490,29 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                         Autoriser la création de comptes
                       </p>
                     </div>
-                    <Switch defaultChecked />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Notifications Email</p>
-                      <p className="text-sm text-muted-foreground">
-                        Envoyer les alertes par email
-                      </p>
-                    </div>
-                    <Switch defaultChecked />
+                    <Switch checked={!!configState?.registration_enabled} onCheckedChange={(v) => setConfigState({ ...configState, registration_enabled: v })} />
                   </div>
                 </CardContent>
               </GlowCard>
 
               <GlowCard>
                 <CardHeader>
-                  <CardTitle>Limites du Système</CardTitle>
+                  <CardTitle>Paramètres Financiers</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label>Limite de retrait journalier (π)</Label>
-                    <Input defaultValue="1000" className="mt-1" />
+                    <Label>Limite de retrait journalier min (π)</Label>
+                    <Input type="number" value={configState?.min_withdrawal ?? ''} onChange={(e) => setConfigState({ ...configState, min_withdrawal: e.target.value })} className="mt-1" />
                   </div>
                   
                   <div>
-                    <Label>Limite de retrait mensuel (π)</Label>
-                    <Input defaultValue="10000" className="mt-1" />
+                    <Label>Limite de retrait mensuel max (π)</Label>
+                    <Input type="number" value={configState?.max_withdrawal ?? ''} onChange={(e) => setConfigState({ ...configState, max_withdrawal: e.target.value })} className="mt-1" />
                   </div>
                   
                   <div>
-                    <Label>Investissement minimum (π)</Label>
-                    <Input defaultValue="10" className="mt-1" />
+                    <Label>Frais plateforme (%)</Label>
+                    <Input type="number" step="0.001" value={configState?.platform_fee_rate ?? ''} onChange={(e) => setConfigState({ ...configState, platform_fee_rate: e.target.value })} className="mt-1" />
                   </div>
                 </CardContent>
               </GlowCard>

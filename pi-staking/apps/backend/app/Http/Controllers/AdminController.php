@@ -8,6 +8,7 @@ use App\Models\Claim;
 use App\Models\Transaction;
 use App\Models\StakingPackage;
 use App\Models\SystemAlert;
+use App\Models\WithdrawalRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,7 @@ class AdminController extends Controller
                         'new_users_week' => $newUsersThisWeek,
                         'active_users_percentage' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 1) : 0,
                         'user_growth_rate' => $this->calculateUserGrowthRate(),
+                            'pending_withdrawals' => WithdrawalRequest::where('status', 'pending')->count(),
                     ],
                     'financial' => [
                         'total_value_locked' => $tvl,
@@ -307,10 +309,19 @@ class AdminController extends Controller
             $status = $request->get('status');
             $dateFrom = $request->get('date_from');
             $dateTo = $request->get('date_to');
-            $perPage = $request->get('per_page', 20);
+            $userId = $request->get('user_id');
+            $minAmount = $request->get('min_amount');
+            $maxAmount = $request->get('max_amount');
+            $perPage = (int) $request->get('per_page', 20);
+            $sortBy = $request->get('sort_by', 'created_at');
+            $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
 
-            $query = Transaction::with('user')
-                ->orderBy('created_at', 'desc');
+            $allowedSort = ['created_at','amount','status','type','id'];
+            if (!in_array($sortBy, $allowedSort, true)) {
+                $sortBy = 'created_at';
+            }
+
+            $query = Transaction::with('user');
 
             if ($type) {
                 $query->where('type', $type);
@@ -324,8 +335,17 @@ class AdminController extends Controller
             if ($dateTo) {
                 $query->whereDate('created_at', '<=', $dateTo);
             }
+            if ($userId) {
+                $query->where('user_id', $userId);
+            }
+            if ($minAmount !== null) {
+                $query->where('amount', '>=', $minAmount);
+            }
+            if ($maxAmount !== null) {
+                $query->where('amount', '<=', $maxAmount);
+            }
 
-            $transactions = $query->paginate($perPage);
+            $transactions = $query->orderBy($sortBy, $sortDir)->paginate($perPage);
 
             return response()->json([
                 'success' => true,
@@ -340,6 +360,67 @@ class AdminController extends Controller
         }
     }
 
+    public function exportTransactionsCsv(Request $request)
+    {
+        $type = $request->get('type');
+        $status = $request->get('status');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
+        $userId = $request->get('user_id');
+        $minAmount = $request->get('min_amount');
+        $maxAmount = $request->get('max_amount');
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['created_at','amount','status','type','id'];
+        if (!in_array($sortBy, $allowedSort, true)) {
+            $sortBy = 'created_at';
+        }
+
+        $query = Transaction::with('user');
+        if ($type) $query->where('type', $type);
+        if ($status) $query->where('status', $status);
+        if ($dateFrom) $query->whereDate('created_at', '>=', $dateFrom);
+        if ($dateTo) $query->whereDate('created_at', '<=', $dateTo);
+        if ($userId) $query->where('user_id', $userId);
+        if ($minAmount !== null) $query->where('amount', '>=', $minAmount);
+        if ($maxAmount !== null) $query->where('amount', '<=', $maxAmount);
+
+        $filename = 'admin_transactions_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+        ];
+
+        $callback = function () use ($query, $sortBy, $sortDir) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['ID','Date','Utilisateur','Email','Type','Montant','Statut','Description','Référence']);
+            $query->orderBy($sortBy, $sortDir)->chunk(500, function ($rows) use ($handle) {
+                foreach ($rows as $tx) {
+                    fputcsv($handle, [
+                        $tx->id,
+                        optional($tx->created_at)->format('Y-m-d H:i:s'),
+                        optional($tx->user)->username,
+                        optional($tx->user)->email,
+                        $tx->type,
+                        $tx->amount,
+                        $tx->status,
+                        $tx->description,
+                        $tx->reference_id,
+                    ]);
+                }
+            });
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+
+    /**
+     * Alertes système
+     */
     public function getSystemAlerts(): JsonResponse
     {
         try {
@@ -368,17 +449,44 @@ class AdminController extends Controller
             'balance_pi' => 'sometimes|numeric|min:0',
             'kyc_status' => 'sometimes|in:pending,verified,rejected',
             'is_active' => 'sometimes|boolean',
+            'reset_two_factor' => 'sometimes|boolean',
         ]);
 
         try {
+            $admin = $request->user();
+            $old = $user->only(['current_level','balance_pi','kyc_status','suspended_at']);
+
             $user->update($request->only([
                 'current_level', 'balance_pi', 'kyc_status'
             ]));
 
-            if ($request->has('is_active') && !$request->is_active) {
+            if ($request->has('is_active') && !$request->boolean('is_active')) {
                 $user->update(['suspended_at' => now()]);
-            } elseif ($request->has('is_active') && $request->is_active) {
+            } elseif ($request->has('is_active') && $request->boolean('is_active')) {
                 $user->update(['suspended_at' => null]);
+            }
+
+            if ($request->boolean('reset_two_factor')) {
+                $user->update([
+                    'two_factor_enabled' => false,
+                    'two_factor_enabled_at' => null,
+                    'two_factor_backup_codes' => null,
+                ]);
+            }
+
+            if (class_exists(\App\Models\Audit::class)) {
+                \App\Models\Audit::create([
+                    'actor_id' => $admin->id,
+                    'action' => 'admin.user.update',
+                    'auditable_type' => User::class,
+                    'auditable_id' => $user->id,
+                    'event' => 'updated',
+                    'old_values' => $old,
+                    'new_values' => $user->only(['current_level','balance_pi','kyc_status','suspended_at']),
+                    'metadata' => [
+                        'reset_two_factor' => $request->boolean('reset_two_factor'),
+                    ],
+                ]);
             }
 
             return response()->json([
