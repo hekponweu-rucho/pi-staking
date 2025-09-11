@@ -15,7 +15,6 @@ class AdminMiddleware
     {
         $user = $request->user();
 
-        // Vérifier que l'utilisateur est connecté
         if (!$user) {
             return response()->json([
                 'success' => false,
@@ -23,9 +22,7 @@ class AdminMiddleware
             ], 401);
         }
 
-        // Vérifier les droits admin
-        // Vous pouvez adapter cette logique selon votre système de rôles
-        if (!$this->isAdmin($user)) {
+        if (!$this->hasAdminAccess($user)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Accès administrateur requis'
@@ -36,34 +33,34 @@ class AdminMiddleware
     }
 
     /**
-     * Vérifier si l'utilisateur est administrateur
+     * Determine if the user has admin access via role or allowlisted email.
      */
-    private function isAdmin($user): bool
+    private function hasAdminAccess($user): bool
     {
-        // Option 1: Basé sur l'email
-        $adminEmails = [
-            'admin@pistaking.com',
-            'superadmin@pistaking.com'
-        ];
-        
-        if (in_array($user->email, $adminEmails)) {
+        // Primary: Spatie role:admin
+        if (method_exists($user, 'hasRole') && $user->hasRole('admin')) {
             return true;
         }
 
-        // Option 2: Basé sur un champ role (si vous avez ce champ)
+        // Fallback: Allowlist of emails from ENV (comma-separated)
+        $allowlist = env('ADMIN_EMAILS', '');
+        if (!empty($allowlist)) {
+            $emails = collect(explode(',', $allowlist))
+                ->map(fn ($e) => strtolower(trim($e)))
+                ->filter()
+                ->all();
+            if (in_array(strtolower($user->email), $emails, true)) {
+                return true;
+            }
+        }
+
+        // Optional legacy flags
         if (isset($user->role) && $user->role === 'admin') {
             return true;
         }
-
-        // Option 3: Basé sur un champ is_admin (si vous avez ce champ)
-        if (isset($user->is_admin) && $user->is_admin) {
+        if (isset($user->is_admin) && (bool) $user->is_admin) {
             return true;
         }
-
-        // Option 4: Utiliser Spatie Permission (si installé)
-        // if ($user->hasRole('admin')) {
-        //     return true;
-        // }
 
         return false;
     }

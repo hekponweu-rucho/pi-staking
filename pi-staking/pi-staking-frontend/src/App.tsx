@@ -8,6 +8,9 @@ import { UserDashboardComplete } from '@/components/UserDashboardComplete';
 import { EmailVerificationPage } from '@/components/EmailVerificationPage';
 import { ParticleBackground } from '@/components/ParticleBackground';
 import AdminApp from '@/admin/components/AdminApp';
+import adminService from '@/admin/services/adminService';
+import { config } from '@/lib/config';
+import { Toaster } from '@/components/ui/sonner';
 
 
 // Types pour la navigation
@@ -20,12 +23,18 @@ function Dashboard() {
 
   // Vérifier si l'utilisateur est admin
   useEffect(() => {
-    if (user) {
-      // Vérifier par email admin ou propriété is_admin
-      const adminEmails = ['admin@pistaking.com', 'admin@example.com'];
-      const isAdminUser = user.is_admin || adminEmails.includes(user.email);
-      setIsAdmin(isAdminUser);
-    }
+    const checkAdmin = async () => {
+      if (!user) return setIsAdmin(false);
+      const allowlist = (import.meta.env.VITE_ADMIN_EMAILS as string | undefined)?.split(',').map(e => e.trim().toLowerCase()) || [];
+      const byRole = (user as any).role === 'admin' || (user as any).is_admin === true;
+      const byEmail = allowlist.includes((user.email || '').toLowerCase());
+      if (byRole || byEmail) {
+        return setIsAdmin(true);
+      }
+      const ok = await adminService.checkAdminAccess();
+      setIsAdmin(!!ok);
+    };
+    checkAdmin();
   }, [user]);
 
   // Si l'utilisateur n'a pas vérifié son email, le rediriger
@@ -129,6 +138,7 @@ export default function App() {
       <StakingProvider>
         <DashboardProvider>
           <AppContent />
+          <Toaster position="top-center" richColors closeButton />
         </DashboardProvider>
       </StakingProvider>
     </AuthProvider>
