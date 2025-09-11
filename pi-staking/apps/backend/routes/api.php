@@ -13,6 +13,7 @@ use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\AdminReferralController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\AdminDepositController;
+use App\Http\Controllers\AdminWithdrawalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -304,7 +305,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // Routes administrateur
-    Route::prefix('admin')->middleware('role:admin')->group(function () {
+    Route::prefix('admin')->middleware('admin.access')->group(function () {
         
         // Dashboard admin principal
         Route::get('/dashboard', [AdminController::class, 'getDashboardStats']);
@@ -313,6 +314,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/deposits', [AdminDepositController::class, 'index']);
         Route::post('/deposits/{id}/expire', [AdminDepositController::class, 'expire']);
         Route::post('/deposits/{id}/confirm', [AdminDepositController::class, 'confirm']);
+
+        // Retraits (validation manuelle)
+        Route::get('/withdrawals', [AdminWithdrawalController::class, 'index']);
+        Route::patch('/withdrawals/{id}', [AdminWithdrawalController::class, 'update']);
         
         // Gestion des utilisateurs
         Route::get('/users', [AdminController::class, 'getUsers']);
@@ -325,6 +330,7 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Monitoring des transactions
         Route::get('/transactions', [AdminController::class, 'getTransactions']);
+        Route::get('/transactions/export', [AdminController::class, 'exportTransactionsCsv']);
         Route::patch('/transactions/{transaction}/status', function($transactionId) {
             $transaction = \App\Models\Transaction::findOrFail($transactionId);
             $transaction->update(['status' => request('status')]);
