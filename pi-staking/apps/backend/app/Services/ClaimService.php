@@ -147,7 +147,7 @@ class ClaimService
     /**
      * Obtenir tous les investissements claimables pour un utilisateur
      */
-    public function getClaimableInvestments(User $user): array
+    public function getClaimableInvestments(User $user)
     {
         return $user->investments()
             ->with('stakingPackage')
@@ -160,8 +160,7 @@ class ClaimService
             ->filter(function ($investment) {
                 return $investment->canClaim();
             })
-            ->values()
-            ->toArray();
+            ->values();
     }
 
     /**
@@ -170,14 +169,14 @@ class ClaimService
     public function claimAll(User $user): array
     {
         $claimableInvestments = $this->getClaimableInvestments($user);
-        $claims = [];
-        $errors = [];
+        $successful = [];
+        $failed = [];
 
         foreach ($claimableInvestments as $investment) {
             try {
-                $claims[] = $this->processClaim($user, $investment);
+                $successful[] = $this->processClaim($user, $investment);
             } catch (Exception $e) {
-                $errors[] = [
+                $failed[] = [
                     'investment_id' => $investment->id,
                     'error' => $e->getMessage(),
                 ];
@@ -185,9 +184,9 @@ class ClaimService
         }
 
         return [
-            'claims' => $claims,
-            'errors' => $errors,
-            'total_claimed' => collect($claims)->sum('final_amount'),
+            'successful_claims' => $successful,
+            'failed_claims' => $failed,
+            'total_claimed' => collect($successful)->sum('final_amount'),
         ];
     }
 
@@ -200,8 +199,8 @@ class ClaimService
         $todaysClaims = $user->claims()->whereDate('claimed_at', today())->get();
 
         return [
-            'claimable_count' => count($claimableInvestments),
-            'potential_claim_amount' => collect($claimableInvestments)->sum(function ($investment) {
+            'claimable_count' => $claimableInvestments->count(),
+            'potential_claim_amount' => $claimableInvestments->sum(function ($investment) {
                 return $this->calculateClaimAmount($investment);
             }),
             'todays_claims_count' => $todaysClaims->count(),

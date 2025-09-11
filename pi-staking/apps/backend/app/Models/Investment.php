@@ -156,6 +156,14 @@ class Investment extends Model
     }
 
     /**
+     * Calculer le rendement quotidien simple (sans appliquer les bonus de streak)
+     */
+    public function calculateDailyReturn(): float
+    {
+        return round($this->amount * $this->daily_rate * $this->bonus_multiplier, 8);
+    }
+
+    /**
      * Effectuer un claim
      */
     public function processClaim(): ?Claim

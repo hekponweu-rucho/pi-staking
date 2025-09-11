@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/calculate-earnings', [StakingController::class, 'calculateEarnings']);
         Route::get('/performance', [StakingController::class, 'getPerformanceHistory']);
         Route::post('/reinvest-bonus', [StakingController::class, 'reinvestBonus']);
+            Route::post('/compound', [StakingController::class, 'compound']);
     });
 
     // Gestion des réclamations
@@ -325,6 +326,25 @@ Route::middleware('auth:sanctum')->group(function () {
         
         // Monitoring des transactions
         Route::get('/transactions', [AdminController::class, 'getTransactions']);
+
+            // Retraits (admin)
+            Route::get('/withdrawals', [AdminController::class, 'getWithdrawalRequests']);
+            Route::post('/withdrawals/{id}/approve', [AdminController::class, 'approveWithdrawal']);
+            Route::post('/withdrawals/{id}/reject', [AdminController::class, 'rejectWithdrawal']);
+
+            // Métriques synthétiques pour le dashboard admin
+            Route::get('/metrics/summary', function() {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'active_investments' => \App\Models\Investment::where('status', 'active')->count(),
+                        'todays_claims_amount' => \App\Models\Claim::where('status', 'processed')
+                            ->whereDate('claimed_at', today())
+                            ->sum('final_amount'),
+                        'pending_withdrawals' => \App\Models\WithdrawalRequest::where('status', 'pending')->count(),
+                    ]
+                ]);
+            });
         Route::patch('/transactions/{transaction}/status', function($transactionId) {
             $transaction = \App\Models\Transaction::findOrFail($transactionId);
             $transaction->update(['status' => request('status')]);
@@ -396,7 +416,7 @@ Route::middleware('auth:sanctum')->group(function () {
                         'level' => $user->current_level,
                         'balance' => $user->balance_pi,
                         'total_invested' => $user->total_invested,
-                        'total_claimed' => $user->claims->sum('amount'),
+                        'total_claimed' => $user->claims->sum('final_amount'),
                         'active_investments' => $user->investments->where('status', 'active')->count(),
                         'created_at' => $user->created_at->format('Y-m-d'),
                         'last_activity' => $user->last_activity?->format('Y-m-d H:i:s'),
@@ -409,9 +429,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/financial', function() {
             $data = [
                 'total_tvl' => \App\Models\Investment::where('status', 'active')->sum('amount'),
-                'total_claimed' => \App\Models\Claim::where('status', 'completed')->sum('amount'),
+                'total_claimed' => \App\Models\Claim::where('status', 'processed')->sum('final_amount'),
                 'pending_claims' => \App\Models\Investment::where('status', 'active')
-                    ->where('next_claim_available_at', '<=', now())->count(),
+                    ->where('next_claim_at', '<=', now())->count(),
                 'daily_volume' => \App\Models\Investment::whereDate('created_at', today())->sum('amount'),
                 'monthly_volume' => \App\Models\Investment::whereBetween('created_at', [
                     now()->startOfMonth(), now()->endOfMonth()

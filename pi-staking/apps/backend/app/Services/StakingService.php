@@ -31,6 +31,23 @@ class StakingService
             // Validations
             $this->validateInvestment($user, $package, $amount, $source);
 
+            $grant = null;
+            if ($source === 'bonus') {
+                $grant = BonusGrant::where('user_id', $user->id)
+                    ->whereIn('type', ['welcome', 'welcome_bonus'])
+                    ->available()
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$grant) {
+                    throw new Exception('Aucun bonus de bienvenue disponible ou il a expiré.');
+                }
+
+                if ($amount > (float) $grant->amount) {
+                    throw new Exception('Le montant dépasse le bonus de bienvenue disponible.');
+                }
+            }
+
             // Débiter les fonds selon la source
             $this->debitFunds($user, $amount, $source);
 
@@ -38,10 +55,16 @@ class StakingService
             $investment = $this->createInvestmentRecord($user, $package, $amount, $source);
 
             // Créer la transaction
-            $this->createInvestmentTransaction($user, $investment, $amount, $source);
+            $this->createInvestmentTransaction($user, $investment, $amount, $source, $grant);
 
             // Mettre à jour les totaux utilisateur
             $user->increment('total_invested', $amount);
+
+            // Si investissement via bonus de bienvenue, marquer le grant et le flag utilisateur
+            if ($source === 'bonus' && $grant) {
+                $user->update(['welcome_bonus_reinvested' => true]);
+                $grant->update(['is_used' => true, 'used_at' => now()]);
+            }
 
             // Mettre à jour le niveau utilisateur
             $this->userLevelService->updateUserLevel($user);
@@ -93,6 +116,26 @@ class StakingService
         if ($source === 'bonus' && !$package->is_discovery_bonus) {
             throw new Exception('Les fonds bonus ne peuvent être utilisés que pour le package Découverte.');
         }
+
+        if ($source === 'bonus') {
+            if (!$user->welcome_bonus_claimed) {
+                throw new Exception('Vous devez d\'abord réclamer votre bonus de bienvenue.');
+            }
+
+            // Vérifier l'existence d'un grant valide et non expiré
+            $grant = BonusGrant::where('user_id', $user->id)
+                ->whereIn('type', ['welcome', 'welcome_bonus'])
+                ->available()
+                ->first();
+
+            if (!$grant) {
+                throw new Exception('Aucun bonus disponible ou bonus expiré.');
+            }
+
+            if ($amount > (float) $grant->amount) {
+                throw new Exception('Montant supérieur au bonus disponible.');
+            }
+        }
     }
 
     /**
@@ -129,6 +172,8 @@ class StakingService
     {
         if ($source === 'funds') {
             $user->decrement('balance_pi', $amount);
+        } elseif ($source === 'bonus') {
+            $user->decrement('bonus_balance', $amount);
         }
     }
 
@@ -159,12 +204,13 @@ class StakingService
         User $user,
         Investment $investment,
         float $amount,
-        string $source
+        string $source,
+        ?BonusGrant $grant = null
     ): Transaction {
         if ($source === 'funds') {
             return Transaction::create([
                 'user_id' => $user->id,
-                'type' => 'adjustment',
+                'type' => 'investment',
                 'category' => 'staking',
                 'amount' => -$amount,
                 'balance_before' => $user->balance_pi + $amount,
@@ -182,7 +228,7 @@ class StakingService
         // Pour les bonus: ne pas impacter le solde disponible
         return Transaction::create([
             'user_id' => $user->id,
-            'type' => 'adjustment',
+            'type' => 'investment',
             'category' => 'staking',
             'amount' => 0,
             'balance_before' => $user->balance_pi,
@@ -191,9 +237,12 @@ class StakingService
             'investment_id' => $investment->id,
             'description' => 'Staking investment created (bonus funds)',
             'processed_at' => now(),
-            'metadata' => [
+            'metadata' => array_filter([
                 'source' => 'bonus',
-            ],
+                'bonus_grant_id' => $grant?->id,
+                'bonus_grant_amount' => $grant?->amount,
+                'bonus_grant_expires_at' => $grant?->expires_at?->toDateTimeString(),
+            ]),
         ]);
     }
 }

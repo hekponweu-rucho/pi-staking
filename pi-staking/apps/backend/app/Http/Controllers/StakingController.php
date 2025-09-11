@@ -31,7 +31,7 @@ class StakingController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'packages' => $packages->toArray(),
+                'packages' => $packages,
                 'user_level' => $user->current_level,
                 'level_info' => $this->userLevelService->getLevelProgress($user),
             ]
@@ -97,6 +97,42 @@ class StakingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Réinvestir des gains (compound) depuis le solde disponible
+     */
+    public function compound(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'package_id' => 'required|integer|exists:staking_packages,id',
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Paramètres invalides',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $package = StakingPackage::find($request->package_id);
+
+        try {
+            $investment = $this->stakingService->createInvestment($user, $package, (float) $request->amount, 'funds');
+            return response()->json([
+                'success' => true,
+                'message' => 'Réinvestissement effectué avec succès.',
+                'data' => $investment,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 422);
         }
     }

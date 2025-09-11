@@ -34,9 +34,9 @@ class AdminController extends Controller
 
             // Métriques financières
             $totalInvested = Investment::where('status', 'active')->sum('amount');
-            $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
+            $totalClaimed = Claim::where('status', 'processed')->sum('final_amount');
             $pendingClaims = Investment::where('status', 'active')
-                ->where('next_claim_available_at', '<=', now())
+                ->where('next_claim_at', '<=', now())
                 ->count();
             
             // Calcul du TVL (Total Value Locked)
@@ -95,7 +95,7 @@ class AdminController extends Controller
                             'name' => $package->name,
                             'investments_count' => $package->investments_count,
                             'daily_rate' => $package->daily_rate * 100,
-                            'total_invested' => Investment::where('package_id', $package->id)
+                            'total_invested' => Investment::where('staking_package_id', $package->id)
                                 ->where('status', 'active')
                                 ->sum('amount'),
                         ];
@@ -201,7 +201,7 @@ class AdminController extends Controller
             // Enrichir les données utilisateur
             $users->getCollection()->transform(function ($user) {
                 $activeInvestments = $user->investments->where('status', 'active');
-                $totalClaimed = $user->claims->where('status', 'completed')->sum('final_amount');
+                $totalClaimed = $user->claims->where('status', 'processed')->sum('final_amount');
 
                 return [
                     'id' => $user->id,
@@ -349,27 +349,117 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Liste des demandes de retrait (admin)
+     */
+    public function getWithdrawalRequests(Request $request): JsonResponse
+    {
+        $status = $request->get('status');
+        $perPage = $request->get('per_page', 20);
+
+        $query = \App\Models\WithdrawalRequest::with('user')->orderBy('created_at', 'desc');
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        $withdrawals = $query->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $withdrawals
+        ]);
+    }
+
+    /**
+     * Approuver une demande de retrait (admin)
+     */
+    public function approveWithdrawal(Request $request, int $id): JsonResponse
+    {
+        $admin = $request->user();
+        $withdrawal = \App\Models\WithdrawalRequest::findOrFail($id);
+
+        if (!in_array($withdrawal->status, ['pending', 'reviewing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette demande ne peut pas être approuvée dans son état actuel.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($withdrawal, $admin) {
+            $withdrawal->update([
+                'status' => 'approved',
+                'processed_at' => now(),
+                'processed_by' => $admin->id,
+            ]);
+
+            \App\Models\Transaction::where('withdrawal_request_id', $withdrawal->id)
+                ->update([
+                    'status' => 'completed',
+                    'processed_at' => now(),
+                    'processed_by' => $admin->id,
+                ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Retrait approuvé.'
+        ]);
+    }
+
+    /**
+     * Rejeter une demande de retrait (admin) et rembourser l'utilisateur
+     */
+    public function rejectWithdrawal(Request $request, int $id): JsonResponse
+    {
+        $admin = $request->user();
+        $withdrawal = \App\Models\WithdrawalRequest::findOrFail($id);
+
+        if (!in_array($withdrawal->status, ['pending', 'reviewing'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette demande ne peut pas être rejetée dans son état actuel.'
+            ], 422);
+        }
+
+        DB::transaction(function () use ($withdrawal, $admin) {
+            // Rembourser l'utilisateur
+            $user = $withdrawal->user;
+            $user->increment('balance_pi', $withdrawal->amount);
+
+            // Mettre à jour la demande
+            $withdrawal->update([
+                'status' => 'rejected',
+                'processed_at' => now(),
+                'processed_by' => $admin->id,
+            ]);
+
+            // Mettre à jour la transaction associée
+            \App\Models\Transaction::where('withdrawal_request_id', $withdrawal->id)
+                ->update([
+                    'status' => 'rejected',
+                    'processed_at' => now(),
+                    'processed_by' => $admin->id,
+                ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Retrait rejeté et fonds remboursés.'
+        ]);
+    }
+
     // === MÉTHODES PRIVÉES POUR LES CALCULS ===
 
     private function calculatePlatformRevenue(): float
     {
-        // Calcul des revenus basé sur les frais de dépôt et de performance
-        $depositFees = Investment::where('status', 'active')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('investments.amount * staking_packages.deposit_fee_rate'));
-
-        $performanceFees = Claim::where('status', 'completed')
-            ->join('investments', 'claims.investment_id', '=', 'investments.id')
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('claims.final_amount * staking_packages.performance_fee_rate'));
-
-        return $depositFees + $performanceFees;
+        // Les champs de frais ne sont pas modélisés. Nous retournons 0 pour l'instant.
+        return 0.0;
     }
 
     private function calculateLiquidityRatio(): float
     {
         $totalReserve = 1000000; // À adapter selon votre réserve réelle
-        $totalClaimed = Claim::where('status', 'completed')->sum('final_amount');
+        $totalClaimed = Claim::where('status', 'processed')->sum('final_amount');
         $pendingClaims = $this->calculatePendingClaimsAmount();
         
         $totalObligations = $totalClaimed + $pendingClaims;
@@ -379,10 +469,13 @@ class AdminController extends Controller
 
     private function calculatePendingClaimsAmount(): float
     {
-        return Investment::where('status', 'active')
-            ->where('next_claim_available_at', '<=', now())
-            ->join('staking_packages', 'investments.package_id', '=', 'staking_packages.id')
-            ->sum(DB::raw('investments.amount * investments.effective_rate'));
+        $pending = Investment::where('status', 'active')
+            ->where('next_claim_at', '<=', now())
+            ->get();
+
+        return $pending->sum(function ($inv) {
+            return $inv->calculateNextClaimAmount();
+        });
     }
 
     private function calculateUserGrowthRate(): float
@@ -481,7 +574,7 @@ class AdminController extends Controller
     {
         $claims = Claim::selectRaw('DATE(created_at) as date, SUM(final_amount) as claims')
             ->where('created_at', '>=', $startDate)
-            ->where('status', 'completed')
+            ->where('status', 'processed')
             ->groupBy('date')
             ->orderBy('date')
             ->get()
@@ -529,8 +622,8 @@ class AdminController extends Controller
             ->map(function ($package) {
                 $totalInvested = $package->investments->sum('amount');
                 $totalClaims = Claim::whereHas('investment', function ($query) use ($package) {
-                    $query->where('package_id', $package->id);
-                })->where('status', 'completed')->sum('final_amount');
+                    $query->where('staking_package_id', $package->id);
+                })->where('status', 'processed')->sum('final_amount');
 
                 return [
                     'name' => $package->name,
@@ -563,7 +656,7 @@ class AdminController extends Controller
             'by_type' => $byType->toArray(),
             'by_status' => $byStatus->toArray(),
             'success_rate' => $totalTransactions > 0 ? 
-                round(($byStatus->where('status', 'completed')->sum('count') / $totalTransactions) * 100, 1) : 0
+                round(($byStatus->where('status', 'processed')->sum('count') / $totalTransactions) * 100, 1) : 0
         ];
     }
 }
