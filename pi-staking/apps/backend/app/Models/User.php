@@ -29,6 +29,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'total_earned',
         'total_claimed',
         'total_withdrawn',
+        'claimable_balance',
+        'claimable_bonus_balance',
+        'pending_withdrawal',
         'current_level',
         'level_updated_at',
         'referral_code',
@@ -74,6 +77,9 @@ class User extends Authenticatable implements MustVerifyEmail
             'total_earned' => 'decimal:8',
             'total_claimed' => 'decimal:8',
             'total_withdrawn' => 'decimal:8',
+            'claimable_balance' => 'decimal:8',
+            'claimable_bonus_balance' => 'decimal:8',
+            'pending_withdrawal' => 'decimal:8',
             'referral_earnings' => 'decimal:8',
             'streak_bonus' => 'decimal:4',
             'notification_preferences' => 'array',
@@ -183,11 +189,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function canInvest(float $amount, string $source = 'funds'): bool
     {
         if ($source === 'funds') {
-            return $this->balance_pi >= $amount;
+            $available = (float) $this->balance_pi - (float) $this->pending_withdrawal;
+            return $available >= $amount;
         }
-        
+
         if ($source === 'bonus') {
             return (float) $this->bonus_balance >= $amount;
+        }
+
+        if ($source === 'claimable') {
+            return (float) $this->claimable_balance >= $amount;
+        }
+
+        if ($source === 'claimable_bonus') {
+            return (float) $this->claimable_bonus_balance >= $amount;
         }
         
         return false;

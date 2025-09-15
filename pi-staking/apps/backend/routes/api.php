@@ -66,6 +66,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/calculate-earnings', [StakingController::class, 'calculatePotentialEarnings']);
         Route::get('/performance', [StakingController::class, 'getPerformanceHistory']);
         Route::post('/reinvest-bonus', [StakingController::class, 'reinvestBonus']);
+        Route::post('/reinvest', [StakingController::class, 'reinvest']);
     });
 
     // Gestion des réclamations

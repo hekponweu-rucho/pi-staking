@@ -88,14 +88,19 @@ class AdminWithdrawalController extends Controller
                 $txn = Transaction::where('withdrawal_request_id', $withdrawal->id)->lockForUpdate()->first();
 
                 if (!$txn) {
-                    $beforeBalance = $user->balance_pi;
-                    if ($beforeBalance < $withdrawal->amount) {
+                    // Cas rare: pas de transaction de réservation
+                    $beforeBalance = (float) $user->balance_pi;
+                    if ($beforeBalance < (float) $withdrawal->amount) {
                         return response()->json([
                             'success' => false,
                             'message' => 'Solde insuffisant pour débiter lors de l\'approbation.'
                         ], 422);
                     }
                     $user->decrement('balance_pi', $withdrawal->amount);
+                    // Réduire la réservation si présente
+                    if ((float) $user->pending_withdrawal >= (float) $withdrawal->amount) {
+                        $user->decrement('pending_withdrawal', $withdrawal->amount);
+                    }
                     $txn = Transaction::create([
                         'user_id' => $user->id,
                         'type' => 'withdrawal',
@@ -107,6 +112,24 @@ class AdminWithdrawalController extends Controller
                         'withdrawal_request_id' => $withdrawal->id,
                         'description' => 'Retrait approuvé manuellement',
                     ]);
+                } else {
+                    // Transaction de réservation existante: convertir en débit et débiter maintenant
+                    $beforeBalance = (float) $user->balance_pi;
+                    if ($beforeBalance < (float) $withdrawal->amount) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Solde insuffisant pour débiter lors de l\'approbation.'
+                        ], 422);
+                    }
+                    $user->decrement('balance_pi', $withdrawal->amount);
+                    // Réduire la réservation
+                    if ((float) $user->pending_withdrawal >= (float) $withdrawal->amount) {
+                        $user->decrement('pending_withdrawal', $withdrawal->amount);
+                    }
+                    $txn->amount = -$withdrawal->amount;
+                    $txn->balance_before = $beforeBalance;
+                    $txn->balance_after = $beforeBalance - (float) $withdrawal->amount;
+                    $txn->description = $txn->description ?: 'Retrait approuvé manuellement';
                 }
 
                 // Mark as approved/completed (no external payout automation here)
@@ -167,13 +190,24 @@ class AdminWithdrawalController extends Controller
             // Refund reserved funds if they were reserved
             $txn = Transaction::where('withdrawal_request_id', $withdrawal->id)->lockForUpdate()->first();
             if ($txn) {
-                // If user was debited at creation, refund now
-                $user->increment('balance_pi', abs((float) $txn->amount));
+                // Si un débit a déjà eu lieu (cas rare), rembourser
+                if ((float) $txn->amount < 0) {
+                    $user->increment('balance_pi', abs((float) $txn->amount));
+                }
+                // Libérer la réservation
+                if ((float) $user->pending_withdrawal >= (float) $withdrawal->amount) {
+                    $user->decrement('pending_withdrawal', $withdrawal->amount);
+                }
                 $txn->status = 'rejected';
                 $txn->processed_at = now();
                 $txn->processed_by = $admin->id;
                 $txn->admin_notes = $validated['reason'];
                 $txn->save();
+            } else {
+                // Pas de transaction trouvée: libérer la réservation si présente
+                if ((float) $user->pending_withdrawal >= (float) $withdrawal->amount) {
+                    $user->decrement('pending_withdrawal', $withdrawal->amount);
+                }
             }
 
             $withdrawal->status = 'rejected';

@@ -38,11 +38,12 @@ class TransactionController extends Controller
         $user = $request->user();
         $amount = $request->amount;
 
-        // Vérifications de sécurité
-        if ($user->balance_pi < $amount) {
+        // Vérifications de sécurité: disponibilité = balance - pending_withdrawal
+        $available = (float) $user->balance_pi - (float) $user->pending_withdrawal;
+        if ($available < $amount) {
             return response()->json([
                 'success' => false,
-                'message' => 'Solde insuffisant pour effectuer ce retrait.'
+                'message' => 'Solde disponible insuffisant (fonds réservés pour d\'autres retraits).'
             ], 422);
         }
 
@@ -84,8 +85,9 @@ class TransactionController extends Controller
 
         try {
             DB::transaction(function () use ($user, $amount, $request, &$withdrawalRequest) {
-                // Bloquer les fonds immédiatement
-                $user->decrement('balance_pi', $amount);
+                // Réserver les fonds
+                $beforePending = (float) $user->pending_withdrawal;
+                $user->increment('pending_withdrawal', $amount);
                 
                 // Créer la demande de retrait
                 $withdrawalRequest = WithdrawalRequest::create([
@@ -97,17 +99,22 @@ class TransactionController extends Controller
                     'requested_at' => now(),
                 ]);
 
-                // Créer la transaction
+                // Créer la transaction de réservation (montant 0, statut pending)
                 Transaction::create([
                     'user_id' => $user->id,
                     'type' => 'withdrawal',
                     'category' => 'withdrawal',
-                    'amount' => -$amount,
-                    'balance_before' => $user->balance_pi + $amount,
+                    'amount' => 0,
+                    'balance_before' => $user->balance_pi,
                     'balance_after' => $user->balance_pi,
                     'status' => 'pending',
                     'withdrawal_request_id' => $withdrawalRequest->id,
-                    'description' => 'Demande de retrait - ' . $amount . ' Pi',
+                    'description' => 'Demande de retrait (réservation) - ' . $amount . ' Pi',
+                    'metadata' => [
+                        'reserved_amount' => $amount,
+                        'pending_before' => $beforePending,
+                        'pending_after' => $beforePending + $amount,
+                    ],
                 ]);
             });
 
@@ -259,8 +266,8 @@ class TransactionController extends Controller
 
         try {
             DB::transaction(function () use ($withdrawal, $user) {
-                // Rembourser les fonds
-                $user->increment('balance_pi', $withdrawal->amount);
+                // Libérer la réservation
+                $user->decrement('pending_withdrawal', $withdrawal->amount);
                 
                 // Marquer comme annulée
                 $withdrawal->update([
@@ -302,7 +309,7 @@ class TransactionController extends Controller
         
         $stats = [
             'balances' => [
-                'available_balance' => $user->balance_pi,
+                'available_balance' => (float) $user->balance_pi - (float) $user->pending_withdrawal,
                 'bonus_balance' => $user->bonus_balance,
                 'staked_amount' => $user->activeInvestments->sum('amount'),
                 'total_claimed' => $user->total_claimed,
@@ -321,9 +328,7 @@ class TransactionController extends Controller
                     ->where('status', 'approved')
                     ->where('processed_at', '>=', now()->startOfMonth())
                     ->sum('amount'),
-                'pending_withdrawals' => $user->withdrawalRequests()
-                    ->where('status', 'pending')
-                    ->sum('amount'),
+                'pending_withdrawals' => (float) $user->pending_withdrawal,
             ],
             'kyc' => [
                 'status' => $user->kyc_status,

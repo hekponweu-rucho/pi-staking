@@ -184,6 +184,29 @@ class StakingService {
     }
   }
 
+  // Réinvestir depuis les soldes claimables
+  async reinvest(
+    packageId: string,
+    amount: number,
+    source: 'claimable' | 'claimable_bonus'
+  ): Promise<{ success: boolean; message: string; data: any }> {
+    try {
+      const response = await api.post('/staking/reinvest', {
+        staking_package_id: packageId,
+        amount,
+        source,
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors du réinvestissement:', error);
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Impossible de réinvestir',
+      };
+    }
+  }
+
   // ✅ Calculer les statistiques de staking pour l'utilisateur
   async getStakingStats(): Promise<{
     success: boolean;
