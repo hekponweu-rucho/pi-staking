@@ -98,6 +98,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   // Données pour les graphiques et statistiques
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [withdrawalLimits, setWithdrawalLimits] = useState({ daily: 0, monthly: 0 });
+  const [reinvestForm, setReinvestForm] = useState<{ source: 'claimable' | 'claimable_bonus'; packageId: string; amount: string }>({ source: 'claimable', packageId: '', amount: '' });
+  const [reinvestLoading, setReinvestLoading] = useState(false);
 
   // État pour les modales
   const [showInvestModal, setShowInvestModal] = useState(false);
@@ -262,6 +264,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   };
 
   const normalizedPackages = Array.isArray(packages) ? packages : (packages as any)?.packages || [];
+  const discoveryPackages = normalizedPackages.filter((p: any) => p.is_discovery_bonus);
+  const regularPackages = normalizedPackages.filter((p: any) => !p.is_discovery_bonus);
   const safeInvestments = Array.isArray(investments) ? investments : [];
   const calculatedTotalInvested = safeInvestments.reduce((sum, inv) => sum + inv.amount, 0) || 0;
   const totalEarnings = safeInvestments.reduce((sum, inv) => sum + (inv.total_earned || 0), 0) || 0;
@@ -313,6 +317,70 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [activeWelcomeGrant?.expires_at]);
+
+  const handleReinvest = async () => {
+    try {
+      setReinvestLoading(true);
+      const pkgId = reinvestForm.packageId || (reinvestForm.source === 'claimable_bonus' ? discoveryPackages[0]?.id : regularPackages[0]?.id);
+      if (!pkgId) {
+        window.alert('Aucun package disponible pour ce réinvestissement');
+        setReinvestLoading(false);
+        return;
+      }
+      const amountNum = parseFloat(reinvestForm.amount);
+      if (!amountNum || amountNum <= 0) {
+        window.alert('Montant invalide');
+        setReinvestLoading(false);
+        return;
+      }
+      // Règles côté client
+      const cb = Number((user as any)?.claimable_balance || 0);
+      const cbb = Number((user as any)?.claimable_bonus_balance || 0);
+      if (reinvestForm.source === 'claimable' && amountNum > cb) {
+        window.alert('Montant supérieur à votre solde de gains réinvestissables');
+        setReinvestLoading(false);
+        return;
+      }
+      if (reinvestForm.source === 'claimable_bonus' && amountNum > cbb) {
+        window.alert('Montant supérieur à votre solde de gains bonus réinvestissables');
+        setReinvestLoading(false);
+        return;
+      }
+      const chosen = normalizedPackages.find((p: any) => p.id === pkgId);
+      if (chosen) {
+        if (reinvestForm.source === 'claimable_bonus' && !chosen.is_discovery_bonus) {
+          window.alert('Les gains bonus ne peuvent être réinvestis que dans le package Discovery');
+          setReinvestLoading(false);
+          return;
+        }
+        if (amountNum < chosen.min_amount) {
+          window.alert(`Le montant doit être ≥ ${formatCurrency(chosen.min_amount)} π`);
+          setReinvestLoading(false);
+          return;
+        }
+        if (chosen.max_amount && amountNum > chosen.max_amount) {
+          window.alert(`Le montant doit être ≤ ${formatCurrency(chosen.max_amount)} π`);
+          setReinvestLoading(false);
+          return;
+        }
+      }
+
+      const res = await stakingService.reinvest(String(pkgId), amountNum, reinvestForm.source);
+      if (!res.success) {
+        window.alert(res.message || 'Échec du réinvestissement');
+      } else {
+        window.alert('Réinvestissement effectué avec succès');
+        setReinvestForm({ ...reinvestForm, amount: '' });
+        await refreshAllData();
+        await refreshUser();
+      }
+    } catch (e) {
+      console.error(e);
+      window.alert('Erreur lors du réinvestissement');
+    } finally {
+      setReinvestLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 relative">
@@ -458,44 +526,40 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
               <GlowCard>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Gains Totaux</CardTitle>
+                  <CardTitle className="text-sm font-medium">Solde disponible</CardTitle>
+                  <Wallet className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {formatCurrency(Number((user as any)?.balance_pi || 0) - Number((user as any)?.pending_withdrawal || 0))} π
+                  </div>
+                  <p className="text-xs text-muted-foreground">Après réservations de retraits</p>
+                </CardContent>
+              </GlowCard>
+
+              <GlowCard>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Gains réinvestissables</CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    +{formatCurrency(totalEarnings)} π
+                    {formatCurrency(Number((user as any)?.claimable_balance || 0))} π
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {totalEarnings > 0 ? `+${((totalEarnings / calculatedTotalInvested) * 100).toFixed(2)}%` : '0%'} ROI
-                  </p>
+                  <p className="text-xs text-muted-foreground">Réinvestissable dans n'importe quel package</p>
                 </CardContent>
               </GlowCard>
 
               <GlowCard>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">À Réclamer</CardTitle>
+                  <CardTitle className="text-sm font-medium">Gains bonus réinvestissables</CardTitle>
                   <Gift className="h-4 w-4 text-pi-gold" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-pi-gold">
-                    {formatCurrency(totalClaimable)} π
+                    {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} π
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {claimableInvestments?.length || 0} réclamations disponibles
-                  </p>
-                </CardContent>
-              </GlowCard>
-
-              <GlowCard>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Niveau</CardTitle>
-                  <Award className="h-4 w-4 text-pi-gold" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-pi-gold">OR</div>
-                  <p className="text-xs text-muted-foreground">
-                    {user?.loyalty_points || 0} points de fidélité
-                  </p>
+                  <p className="text-xs text-muted-foreground">Réinvestissable seulement dans Discovery</p>
                 </CardContent>
               </GlowCard>
             </div>
@@ -537,6 +601,59 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardContent>
               </GlowCard>
             )}
+
+            {/* Réinvestissement depuis gains */}
+            <GlowCard>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" /> Réinvestir mes gains
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <Label>Source</Label>
+                    <select
+                      className="w-full border rounded-md h-10 px-2 bg-background"
+                      value={reinvestForm.source}
+                      onChange={(e) => setReinvestForm({ ...reinvestForm, source: e.target.value as any, packageId: '' })}
+                    >
+                      <option value="claimable">Gains</option>
+                      <option value="claimable_bonus">Gains bonus (Discovery)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Package</Label>
+                    <select
+                      className="w-full border rounded-md h-10 px-2 bg-background"
+                      value={reinvestForm.packageId}
+                      onChange={(e) => setReinvestForm({ ...reinvestForm, packageId: e.target.value })}
+                    >
+                      {(reinvestForm.source === 'claimable' ? regularPackages : discoveryPackages).map((p: any) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label>Montant (π)</Label>
+                    <Input
+                      type="number"
+                      placeholder="0.00"
+                      value={reinvestForm.amount}
+                      onChange={(e) => setReinvestForm({ ...reinvestForm, amount: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={handleReinvest} disabled={reinvestLoading} className="pi-gradient text-white hover:pi-gradient-hover">
+                    {reinvestLoading ? 'Réinvestissement...' : 'Réinvestir'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Solde gains: {formatCurrency(Number((user as any)?.claimable_balance || 0))} π • Gains bonus: {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} π • Réservé: {formatCurrency(Number((user as any)?.pending_withdrawal || 0))} π
+                </p>
+              </CardContent>
+            </GlowCard>
 
             {/* Actions Rapides */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
