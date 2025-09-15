@@ -25,7 +25,7 @@ class StakingService
         User $user,
         StakingPackage $package,
         float $amount,
-        string $source = 'funds'
+        string $source = 'funds' // funds|bonus|claimable|claimable_bonus
     ): Investment {
         return DB::transaction(function () use ($user, $package, $amount, $source) {
             // Validations
@@ -34,8 +34,11 @@ class StakingService
             // Débiter les fonds selon la source
             $this->debitFunds($user, $amount, $source);
 
+            // Mapper la source d'origine pour l'investissement
+            $origin = in_array($source, ['funds', 'claimable'], true) ? 'funds' : 'bonus';
+
             // Créer l'investissement
-            $investment = $this->createInvestmentRecord($user, $package, $amount, $source);
+            $investment = $this->createInvestmentRecord($user, $package, $amount, $origin);
 
             // Créer la transaction
             $this->createInvestmentTransaction($user, $investment, $amount, $source);
@@ -82,15 +85,12 @@ class StakingService
         }
 
         // Règles spécifiques bonus Discovery
-        if ($package->is_discovery_bonus && $source !== 'bonus') {
-            throw new Exception('Ce package ne peut être utilisé qu\'avec des fonds bonus.');
+        if (in_array($source, ['bonus', 'claimable_bonus'], true) && !$package->is_discovery_bonus) {
+            throw new Exception('Les fonds bonus et leurs gains ne peuvent être utilisés que pour le package Découverte.');
         }
 
         if ($source === 'bonus') {
-            if (!$package->is_discovery_bonus) {
-                throw new Exception('Les fonds bonus ne peuvent être utilisés que pour le package Découverte.');
-            }
-            // Anti-abus: un seul investissement via bonus par utilisateur
+            // Anti-abus: un seul investissement créé directement depuis bonus par utilisateur
             $hasBonusInvestment = Investment::where('user_id', $user->id)
                 ->where('source', 'bonus')
                 ->exists();
@@ -146,6 +146,15 @@ class StakingService
         }
         if ($source === 'bonus') {
             $user->decrement('bonus_balance', $amount);
+            return;
+        }
+        if ($source === 'claimable') {
+            $user->decrement('claimable_balance', $amount);
+            return;
+        }
+        if ($source === 'claimable_bonus') {
+            $user->decrement('claimable_bonus_balance', $amount);
+            return;
         }
     }
 
@@ -153,7 +162,7 @@ class StakingService
         User $user,
         StakingPackage $package,
         float $amount,
-        string $source
+        string $origin
     ): Investment {
         $startAt = now();
         $endAt = $package->duration_days ? $startAt->clone()->addDays($package->duration_days) : null;
@@ -166,7 +175,7 @@ class StakingService
             'start_at' => $startAt,
             'end_at' => $endAt,
             'status' => 'active',
-            'source' => $source,
+            'source' => $origin,
             'next_claim_at' => $startAt->clone()->addDay(),
             'bonus_multiplier' => 1.0,
         ]);
@@ -196,7 +205,27 @@ class StakingService
             ]);
         }
 
-        // Pour les bonus: ne pas impacter le solde disponible
+        if ($source === 'claimable') {
+            return Transaction::create([
+                'user_id' => $user->id,
+                'type' => 'adjustment',
+                'category' => 'staking',
+                'amount' => 0,
+                'balance_before' => $user->balance_pi,
+                'balance_after' => $user->balance_pi,
+                'status' => 'completed',
+                'investment_id' => $investment->id,
+                'description' => 'Reinvest from claimable balance',
+                'processed_at' => now(),
+                'metadata' => [
+                    'source' => 'claimable',
+                    'claimable_before' => (float) $user->claimable_balance + $amount,
+                    'claimable_after' => (float) $user->claimable_balance,
+                ],
+            ]);
+        }
+
+        // Pour les bonus et bonus claimable: ne pas impacter le solde disponible
         return Transaction::create([
             'user_id' => $user->id,
             'type' => 'adjustment',
@@ -206,10 +235,12 @@ class StakingService
             'balance_after' => $user->balance_pi,
             'status' => 'completed',
             'investment_id' => $investment->id,
-            'description' => 'Staking investment created (bonus funds)',
+            'description' => $source === 'claimable_bonus' ? 'Reinvest from claimable bonus' : 'Staking investment created (bonus funds)',
             'processed_at' => now(),
             'metadata' => [
-                'source' => 'bonus',
+                'source' => $source === 'claimable_bonus' ? 'claimable_bonus' : 'bonus',
+                'claimable_bonus_before' => $source === 'claimable_bonus' ? ((float) $user->claimable_bonus_balance + $amount) : null,
+                'claimable_bonus_after' => $source === 'claimable_bonus' ? (float) $user->claimable_bonus_balance : null,
             ],
         ]);
     }

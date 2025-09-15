@@ -24,24 +24,25 @@ class AdminWithdrawalsTest extends TestCase
         $admin = User::factory()->create(['email' => 'admin@example.com']);
         $admin->assignRole('admin');
 
-        $user = User::factory()->create(['balance_pi' => 100.00]);
+        $user = User::factory()->create(['balance_pi' => 100.00, 'pending_withdrawal' => 0]);
         $withdrawal = WithdrawalRequest::create([
             'user_id' => $user->id,
             'amount' => 50.00,
             'status' => 'pending',
         ]);
 
-        $beforeBalance = $user->balance_pi;
-        $user->decrement('balance_pi', 50.00);
+        $beforeBalance = (float) $user->balance_pi;
+        $user->increment('pending_withdrawal', 50.00);
         $txn = Transaction::create([
             'user_id' => $user->id,
             'type' => 'withdrawal',
             'category' => 'withdrawal',
-            'amount' => -50.00,
+            'amount' => 0,
             'balance_before' => $beforeBalance,
-            'balance_after' => $beforeBalance - 50.00,
+            'balance_after' => $beforeBalance,
             'status' => 'pending',
             'withdrawal_request_id' => $withdrawal->id,
+            'description' => 'Demande de retrait (réservation)',
         ]);
 
         $response = $this->actingAs($admin, 'sanctum')
@@ -50,9 +51,13 @@ class AdminWithdrawalsTest extends TestCase
             ]);
 
         $response->assertOk();
+        $freshUser = $user->fresh();
+        $freshTxn = $txn->fresh();
         $this->assertEquals('approved', $withdrawal->fresh()->status);
-        $this->assertEquals('completed', $txn->fresh()->status);
-        $this->assertEquals($beforeBalance - 50.00, (float)$user->fresh()->balance_pi);
+        $this->assertEquals('completed', $freshTxn->status);
+        $this->assertEquals(-50.00, (float) $freshTxn->amount);
+        $this->assertEquals($beforeBalance - 50.00, (float)$freshUser->balance_pi);
+        $this->assertEquals(0.0, (float)$freshUser->pending_withdrawal);
     }
 
     public function test_admin_can_reject_withdrawal_and_refund(): void
@@ -60,24 +65,25 @@ class AdminWithdrawalsTest extends TestCase
         $admin = User::factory()->create(['email' => 'admin2@example.com']);
         $admin->assignRole('admin');
 
-        $user = User::factory()->create(['balance_pi' => 80.00]);
+        $user = User::factory()->create(['balance_pi' => 80.00, 'pending_withdrawal' => 0]);
         $withdrawal = WithdrawalRequest::create([
             'user_id' => $user->id,
             'amount' => 30.00,
             'status' => 'pending',
         ]);
 
-        $beforeBalance = $user->balance_pi;
-        $user->decrement('balance_pi', 30.00);
+        $beforeBalance = (float) $user->balance_pi;
+        $user->increment('pending_withdrawal', 30.00);
         $txn = Transaction::create([
             'user_id' => $user->id,
             'type' => 'withdrawal',
             'category' => 'withdrawal',
-            'amount' => -30.00,
+            'amount' => 0,
             'balance_before' => $beforeBalance,
-            'balance_after' => $beforeBalance - 30.00,
+            'balance_after' => $beforeBalance,
             'status' => 'pending',
             'withdrawal_request_id' => $withdrawal->id,
+            'description' => 'Demande de retrait (réservation)',
         ]);
 
         $response = $this->actingAs($admin, 'sanctum')
@@ -87,8 +93,11 @@ class AdminWithdrawalsTest extends TestCase
             ]);
 
         $response->assertOk();
+        $freshUser = $user->fresh();
+        $freshTxn = $txn->fresh();
         $this->assertEquals('rejected', $withdrawal->fresh()->status);
-        $this->assertEquals('rejected', $txn->fresh()->status);
-        $this->assertEquals($beforeBalance, (float)$user->fresh()->balance_pi);
+        $this->assertEquals('rejected', $freshTxn->status);
+        $this->assertEquals(0.0, (float)$freshUser->pending_withdrawal);
+        $this->assertEquals($beforeBalance, (float)$freshUser->balance_pi);
     }
 }

@@ -102,6 +102,110 @@ class StakingController extends Controller
     }
 
     /**
+     * Réinvestir depuis les soldes claimables
+     */
+    public function reinvest(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'staking_package_id' => 'required|integer|exists:staking_packages,id',
+            'amount' => 'required|numeric|min:0.00000001',
+            'source' => 'required|in:claimable,claimable_bonus',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreurs de validation',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $package = StakingPackage::findOrFail($request->staking_package_id);
+        $amount = (float) $request->amount;
+        $source = $request->source;
+
+        try {
+            $result = DB::transaction(function () use ($user, $package, $amount, $source) {
+                if ($source === 'claimable_bonus') {
+                    if (!$package->is_discovery_bonus) {
+                        throw new \Exception('Les gains bonus ne peuvent être réinvestis que dans Discovery.');
+                    }
+                    if ((float) $user->claimable_bonus_balance < $amount) {
+                        throw new \Exception('Solde de gains bonus insuffisant.');
+                    }
+
+                    // Chercher un investissement bonus actif (unique autorisé)
+                    $existing = Investment::where('user_id', $user->id)
+                        ->where('source', 'bonus')
+                        ->where('status', 'active')
+                        ->first();
+
+                    if ($existing) {
+                        // Compound sur le même investissement (respecter min/max)
+                        $newAmount = (float) $existing->amount + $amount;
+                        if ($package->max_amount && $newAmount > (float) $package->max_amount) {
+                            throw new \Exception('Le montant total dépasserait le maximum autorisé pour ce package.');
+                        }
+                        if ($newAmount < (float) $package->min_amount) {
+                            throw new \Exception('Le montant total serait inférieur au minimum requis.');
+                        }
+
+                        $before = (float) $existing->amount;
+                        $existing->update(['amount' => $newAmount]);
+                        $user->decrement('claimable_bonus_balance', $amount);
+
+                        Transaction::create([
+                            'user_id' => $user->id,
+                            'type' => 'adjustment',
+                            'category' => 'staking',
+                            'amount' => 0,
+                            'balance_before' => $user->balance_pi,
+                            'balance_after' => $user->balance_pi,
+                            'status' => 'completed',
+                            'investment_id' => $existing->id,
+                            'description' => 'Compound (claimable bonus) into Discovery investment',
+                            'processed_at' => now(),
+                            'metadata' => [
+                                'source' => 'claimable_bonus',
+                                'investment_amount_before' => $before,
+                                'investment_amount_after' => $newAmount,
+                                'claimable_bonus_before' => $user->claimable_bonus_balance + $amount,
+                                'claimable_bonus_after' => $user->claimable_bonus_balance,
+                            ],
+                        ]);
+
+                        return $existing->fresh('stakingPackage');
+                    }
+
+                    // Aucun investissement bonus existant: créer le premier
+                    $investment = $this->stakingService->createInvestment($user, $package, $amount, 'claimable_bonus');
+                    return $investment->load('stakingPackage');
+                }
+
+                // Source = claimable (fonds réels)
+                if ((float) $user->claimable_balance < $amount) {
+                    throw new \Exception('Solde de gains claimables insuffisant.');
+                }
+
+                $investment = $this->stakingService->createInvestment($user, $package, $amount, 'claimable');
+                return $investment->load('stakingPackage');
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Réinvestissement effectué avec succès',
+                'data' => $result,
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * Réinvestir le bonus de bienvenue dans le package Discovery
      */
     public function reinvestBonus(Request $request): JsonResponse

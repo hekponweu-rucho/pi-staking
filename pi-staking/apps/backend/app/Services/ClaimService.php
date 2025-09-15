@@ -26,8 +26,12 @@ class ClaimService
             // Créer le claim
             $claim = $this->createClaimRecord($user, $investment, $amount);
 
-            // Créditer le solde utilisateur
-            $user->increment('balance_pi', $amount);
+            // Créditer les soldes claimables (pas le solde disponible)
+            if ($investment->source === 'bonus') {
+                $user->increment('claimable_bonus_balance', $amount);
+            } else {
+                $user->increment('claimable_balance', $amount);
+            }
             $user->increment('total_claimed', $amount);
             if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'total_earned')) {
                 $user->increment('total_earned', $amount);
@@ -133,14 +137,18 @@ class ClaimService
             'user_id' => $user->id,
             'type' => 'claim',
             'category' => 'staking',
-            'amount' => $amount,
-            'balance_before' => $user->balance_pi - $amount,
+            'amount' => 0,
+            'balance_before' => $user->balance_pi,
             'balance_after' => $user->balance_pi,
             'status' => 'completed',
             'investment_id' => $claim->investment_id,
             'claim_id' => $claim->id,
-            'description' => 'Claim quotidien - ' . $claim->investment->stakingPackage->name,
+            'description' => 'Daily claim credited to claimable balance',
             'processed_at' => now(),
+            'metadata' => [
+                'credited_to' => $claim->investment->source === 'bonus' ? 'claimable_bonus' : 'claimable',
+                'amount' => $amount,
+            ],
         ]);
     }
 
