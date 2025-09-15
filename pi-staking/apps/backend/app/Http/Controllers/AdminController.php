@@ -26,12 +26,18 @@ class AdminController extends Controller
     public function getDashboardStats(): JsonResponse
     {
         try {
+            // Users overview
+            $totalUsers = User::count();
+            $activeUsers = User::where('last_activity', '>=', now()->subDays(30))->count();
+            $newUsersToday = User::whereDate('created_at', today())->count();
+            $newUsersThisWeek = User::where('created_at', '>=', now()->startOfWeek())->count();
+
             $users = [
-                'total' => User::count(),
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'new_today' => $newUsersToday,
+                'new_this_week' => $newUsersThisWeek,
             ];
-            if (Schema::hasColumn('users', 'status')) {
-                $users['active'] = User::where('status', 'active')->count();
-            }
 
             // Métriques financières détaillées
             $totalInvested = Investment::where('status', 'active')->sum('amount');
@@ -67,6 +73,12 @@ class AdminController extends Controller
             }
 
             $packagesCount = StakingPackage::count();
+            $popularPackages = StakingPackage::withCount('investments')
+                ->orderByDesc('investments_count')
+                ->take(5)
+                ->get();
+
+            $activeAlerts = SystemAlert::where('is_resolved', false)->count();
 
             $start = now()->subMonths(12)->startOfMonth();
             $months = [];
@@ -144,7 +156,7 @@ class AdminController extends Controller
                         'new_users_week' => $newUsersThisWeek,
                         'active_users_percentage' => $totalUsers > 0 ? round(($activeUsers / $totalUsers) * 100, 1) : 0,
                         'user_growth_rate' => $this->calculateUserGrowthRate(),
-                            'pending_withdrawals' => WithdrawalRequest::where('status', 'pending')->count(),
+                        'pending_withdrawals' => WithdrawalRequest::where('status', 'pending')->count(),
                     ],
                     'financial' => [
                         'total_value_locked' => $tvl,
