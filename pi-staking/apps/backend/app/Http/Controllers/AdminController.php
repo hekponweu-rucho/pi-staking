@@ -395,19 +395,20 @@ class AdminController extends Controller
 
         $callback = function () use ($query, $sortBy, $sortDir) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['ID','Date','Utilisateur','Email','Type','Montant','Statut','Description','Référence']);
+            // English headers, UTC timestamps
+            fputcsv($handle, ['id','user_email','type','status','amount','tx_hash','reference_id','created_at_utc']);
             $query->orderBy($sortBy, $sortDir)->chunk(500, function ($rows) use ($handle) {
                 foreach ($rows as $tx) {
+                    $createdUtc = optional($tx->created_at)?->copy()->setTimezone('UTC')->format('Y-m-d H:i:s');
                     fputcsv($handle, [
                         $tx->id,
-                        optional($tx->created_at)->format('Y-m-d H:i:s'),
-                        optional($tx->user)->username,
                         optional($tx->user)->email,
                         $tx->type,
-                        $tx->amount,
                         $tx->status,
-                        $tx->description,
+                        $tx->amount,
+                        $tx->transaction_hash,
                         $tx->reference_id,
+                        $createdUtc,
                     ]);
                 }
             });

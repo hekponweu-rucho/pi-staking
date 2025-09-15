@@ -36,6 +36,6 @@ class AdminTransactionsExportTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'text/csv');
-        $this->assertStringContainsString('ID,Date,Utilisateur,Email,Type,Montant,Statut,Description,Référence', $response->streamedContent());
+        $this->assertStringContainsString('id,user_email,type,status,amount,tx_hash,reference_id,created_at_utc', $response->streamedContent());
     }
 }

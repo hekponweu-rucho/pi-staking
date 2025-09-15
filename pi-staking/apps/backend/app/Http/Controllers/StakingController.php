@@ -31,7 +31,7 @@ class StakingController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'packages' => $packages->toArray(),
+                'packages' => $packages,
                 'user_level' => $user->current_level,
                 'level_info' => $this->userLevelService->getLevelProgress($user),
             ]

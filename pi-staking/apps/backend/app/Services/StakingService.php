@@ -65,33 +65,46 @@ class StakingService
         float $amount,
         string $source
     ): void {
-        // Vérifier que le package est actif
         if (!$package->is_active) {
             throw new Exception('Ce package de staking n\'est plus disponible.');
         }
 
-        // Vérifier que l'utilisateur peut utiliser ce package
         if (!$package->canBeUsedBy($user)) {
             throw new Exception('Vous ne remplissez pas les conditions pour ce package.');
         }
 
-        // Vérifier que le montant est valide
         if (!$package->isValidAmount($amount)) {
             throw new Exception('Le montant doit être entre ' . $package->min_amount . ' et ' . ($package->max_amount ?? 'illimité') . ' Pi.');
         }
 
-        // Vérifier que l'utilisateur a les fonds suffisants
         if (!$user->canInvest($amount, $source)) {
             throw new Exception('Fonds insuffisants pour cet investissement.');
         }
 
-        // Vérifications spécifiques pour le bonus de découverte
+        // Règles spécifiques bonus Discovery
         if ($package->is_discovery_bonus && $source !== 'bonus') {
             throw new Exception('Ce package ne peut être utilisé qu\'avec des fonds bonus.');
         }
 
-        if ($source === 'bonus' && !$package->is_discovery_bonus) {
-            throw new Exception('Les fonds bonus ne peuvent être utilisés que pour le package Découverte.');
+        if ($source === 'bonus') {
+            if (!$package->is_discovery_bonus) {
+                throw new Exception('Les fonds bonus ne peuvent être utilisés que pour le package Découverte.');
+            }
+            // Anti-abus: un seul investissement via bonus par utilisateur
+            $hasBonusInvestment = Investment::where('user_id', $user->id)
+                ->where('source', 'bonus')
+                ->exists();
+            if ($hasBonusInvestment) {
+                throw new Exception('Vous avez déjà utilisé votre bonus de bienvenue pour un investissement.');
+            }
+            // Expiration du bonus: refuser si tous les bonus sont expirés
+            $activeGrant = \App\Models\BonusGrant::where('user_id', $user->id)
+                ->whereIn('type', ['welcome', 'welcome_bonus'])
+                ->available()
+                ->first();
+            if (!$activeGrant) {
+                throw new Exception('Votre bonus de bienvenue n\'est pas disponible ou a expiré.');
+            }
         }
     }
 
@@ -129,6 +142,10 @@ class StakingService
     {
         if ($source === 'funds') {
             $user->decrement('balance_pi', $amount);
+            return;
+        }
+        if ($source === 'bonus') {
+            $user->decrement('bonus_balance', $amount);
         }
     }
 
