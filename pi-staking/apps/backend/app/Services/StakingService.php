@@ -17,7 +17,8 @@ class StakingService
     public function __construct(
         private UserLevelService $userLevelService,
         private GamificationService $gamificationService,
-        private ReferralService $referralService
+        private ReferralService $referralService,
+        private LedgerService $ledgerService
     ) {}
 
     /**
@@ -41,6 +42,19 @@ class StakingService
 
             // Créer l'investissement
             $investment = $this->createInvestmentRecord($user, $package, $amount, $origin);
+
+            // Ledger: mouvement du portefeuille vers l'externe
+            $accountMap = [
+                'funds' => 'principal',
+                'bonus' => 'bonus',
+                'claimable' => 'claimable',
+                'claimable_bonus' => 'claimable_bonus',
+            ];
+            $acc = $accountMap[$source] ?? 'principal';
+            $this->ledgerService->moveUserToExternal($user->id, $acc, $amount, 'investment', (string) $investment->id, [
+                'package_id' => $package->id,
+                'source' => $source,
+            ]);
 
             // Créer la transaction
             $this->createInvestmentTransaction($user, $investment, $amount, $source);

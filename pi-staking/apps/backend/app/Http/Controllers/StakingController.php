@@ -155,6 +155,10 @@ class StakingController extends Controller
                         $existing->update(['amount' => $newAmount]);
                         $user->decrement('claimable_bonus_balance', $amount);
 
+                        app(\App\Services\LedgerService::class)->moveUserToExternal($user->id, 'claimable_bonus', $amount, 'investment_compound', (string) $existing->id, [
+                            'package_id' => $package->id,
+                        ]);
+
                         Transaction::create([
                             'user_id' => $user->id,
                             'type' => 'adjustment',

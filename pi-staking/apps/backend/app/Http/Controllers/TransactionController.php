@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
+    public function __construct(private \App\Services\LedgerService $ledgerService)
+    {
+    }
     /**
      * Créer une demande de retrait
      */
@@ -87,6 +90,9 @@ class TransactionController extends Controller
                     'note' => $request->note,
                     'requested_at' => now(),
                 ]);
+
+                // Ledger: réserver en déplaçant principal -> pending_withdrawal
+                $this->ledgerService->move($user->id, 'principal', $user->id, 'pending_withdrawal', $amount, 'withdrawal_request', (string) $withdrawalRequest->id, []);
 
                 // Créer la transaction de réservation (montant 0, statut pending)
                 Transaction::create([
@@ -257,6 +263,8 @@ class TransactionController extends Controller
             DB::transaction(function () use ($withdrawal, $user) {
                 // Libérer la réservation
                 $user->decrement('pending_withdrawal', $withdrawal->amount);
+
+                $this->ledgerService->move($user->id, 'pending_withdrawal', $user->id, 'principal', $withdrawal->amount, 'withdrawal_cancel', (string) $withdrawal->id, []);
                 
                 // Marquer comme annulée
                 $withdrawal->update([

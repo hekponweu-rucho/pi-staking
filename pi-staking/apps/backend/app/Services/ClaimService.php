@@ -6,155 +6,136 @@ use App\Models\Claim;
 use App\Models\Investment;
 use App\Models\User;
 use App\Models\Transaction;
+use App\Support\Money;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\QueryException;
 use Exception;
 
 class ClaimService
 {
-    /**
-     * Effectuer un claim pour un investissement
-     */
-    public function processClaim(User $user, Investment $investment): Claim
+    public function __construct(private LedgerService $ledgerService)
     {
-        return DB::transaction(function () use ($user, $investment) {
-            // Validations
-            $this->validateClaim($user, $investment);
+    }
 
-            // Calculer le montant du claim
-            $amount = $this->calculateClaimAmount($investment);
+    public function processClaim(User $user, Investment $investment, ?string $forDate = null): Claim
+    {
+        $forDate = $forDate ?: now()->toDateString();
+        $lock = Cache::lock('claim:investment:' . $investment->id, 10);
 
-            // Créer le claim
-            $claim = $this->createClaimRecord($user, $investment, $amount);
+        return $lock->block(5, function () use ($user, $investment, $forDate) {
+            return DB::transaction(function () use ($user, $investment, $forDate) {
+                $investment = Investment::where('id', $investment->id)->lockForUpdate()->firstOrFail();
 
-            // Créditer les soldes claimables (pas le solde disponible)
-            if ($investment->source === 'bonus') {
-                $user->increment('claimable_bonus_balance', $amount);
-            } else {
-                $user->increment('claimable_balance', $amount);
-            }
-            $user->increment('total_claimed', $amount);
-            if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'total_earned')) {
-                $user->increment('total_earned', $amount);
-            }
+                $this->validateClaim($user, $investment, $forDate);
 
-            // Mettre à jour l'investissement
-            $this->updateInvestmentAfterClaim($investment, $amount);
+                $baseAmount = Money::mul($investment->amount, $investment->daily_rate);
+                $amount = Money::mul($baseAmount, $investment->bonus_multiplier);
+                $amount = Money::round($amount);
+                $bonusAmount = Money::sub($amount, $baseAmount);
 
-            // Créer la transaction
-            $this->createClaimTransaction($user, $claim, $amount);
+                try {
+                    $claim = Claim::firstOrCreate([
+                        'investment_id' => $investment->id,
+                        'user_id' => $user->id,
+                        'claimed_for_day' => $forDate,
+                    ], [
+                        'base_amount' => $baseAmount,
+                        'bonus_amount' => $bonusAmount,
+                        'final_amount' => $amount,
+                        'claimed_at' => now(),
+                        'status' => 'processed',
+                        'daily_rate_applied' => $investment->daily_rate,
+                        'calculation_details' => [
+                            'base_calculation' => $baseAmount,
+                            'bonus_multiplier' => $investment->bonus_multiplier,
+                            'final_amount' => $amount,
+                        ],
+                    ]);
+                } catch (QueryException $e) {
+                    $claim = Claim::where('investment_id', $investment->id)
+                        ->where('user_id', $user->id)
+                        ->where('claimed_for_day', $forDate)
+                        ->first();
+                    if ($claim) {
+                        return $claim;
+                    }
+                    throw $e;
+                }
 
-            return $claim;
+                if ($claim->wasRecentlyCreated) {
+                    if ($investment->source === 'bonus') {
+                        $user->increment('claimable_bonus_balance', (float) $amount);
+                    } else {
+                        $user->increment('claimable_balance', (float) $amount);
+                    }
+                    $user->increment('total_claimed', (float) $amount);
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('users', 'total_earned')) {
+                        $user->increment('total_earned', (float) $amount);
+                    }
+
+                    $investment->update([
+                        'last_claim_at' => now(),
+                        'next_claim_at' => now()->addDay(),
+                        'total_claimed' => (float) $investment->total_claimed + (float) $amount,
+                        'claims_count' => (int) $investment->claims_count + 1,
+                    ]);
+
+                    Transaction::create([
+                        'user_id' => $user->id,
+                        'type' => 'claim',
+                        'category' => 'staking',
+                        'amount' => 0,
+                        'balance_before' => $user->balance_pi,
+                        'balance_after' => $user->balance_pi,
+                        'status' => 'completed',
+                        'investment_id' => $claim->investment_id,
+                        'claim_id' => $claim->id,
+                        'description' => 'Daily claim credited to claimable balance',
+                        'processed_at' => now(),
+                        'metadata' => [
+                            'credited_to' => $investment->source === 'bonus' ? 'claimable_bonus' : 'claimable',
+                            'amount' => (float) $amount,
+                        ],
+                    ]);
+
+                    if ($investment->source === 'bonus') {
+                        $this->ledgerService->moveExternalToUser($user->id, 'claimable_bonus', $amount, 'claim', (string) $claim->id, [
+                            'investment_id' => $investment->id,
+                        ]);
+                    } else {
+                        $this->ledgerService->moveExternalToUser($user->id, 'claimable', $amount, 'claim', (string) $claim->id, [
+                            'investment_id' => $investment->id,
+                        ]);
+                    }
+
+                    if ($investment->end_at && now()->isAfter($investment->end_at)) {
+                        $investment->update(['status' => 'completed']);
+                    }
+                }
+
+                return $claim;
+            });
         });
     }
 
-    /**
-     * Valider qu'un claim peut être effectué
-     */
-    private function validateClaim(User $user, Investment $investment): void
+    private function validateClaim(User $user, Investment $investment, ?string $forDate = null): void
     {
         if ($investment->user_id !== $user->id) {
             throw new Exception('Cet investissement ne vous appartient pas.');
         }
 
         if (!$investment->canClaim()) {
-            throw new Exception('Ce claim n\'est pas encore disponible.');
+            throw new Exception("Ce claim n'est pas encore disponible.");
         }
 
-        // Vérifier qu'il n'y a pas déjà un claim pour aujourd'hui
-        $existingClaim = $investment->claims()
-            ->where('claimed_for_day', now()->toDateString())
-            ->exists();
-
+        $date = $forDate ?: now()->toDateString();
+        $existingClaim = $investment->claims()->where('claimed_for_day', $date)->exists();
         if ($existingClaim) {
-            throw new Exception('Vous avez déjà claimé pour cet investissement aujourd\'hui.');
+            throw new Exception("Vous avez déjà claimé pour cet investissement aujourd'hui.");
         }
     }
 
-    /**
-     * Calculer le montant du claim
-     */
-    private function calculateClaimAmount(Investment $investment): float
-    {
-        $baseAmount = $investment->amount * $investment->daily_rate;
-        
-        // Appliquer le multiplicateur de bonus
-        $amount = $baseAmount * $investment->bonus_multiplier;
-
-        // Arrondir à 8 décimales
-        return round($amount, 8);
-    }
-
-    /**
-     * Créer l'enregistrement du claim
-     */
-    private function createClaimRecord(User $user, Investment $investment, float $amount): Claim
-    {
-        $baseAmount = $investment->amount * $investment->daily_rate;
-        $bonusAmount = $amount - $baseAmount;
-
-        return Claim::create([
-            'investment_id' => $investment->id,
-            'user_id' => $user->id,
-            'claimed_for_day' => now()->toDateString(),
-            'base_amount' => $baseAmount,
-            'bonus_amount' => $bonusAmount,
-            'final_amount' => $amount,
-            'claimed_at' => now(),
-            'status' => 'processed',
-            'daily_rate_applied' => $investment->daily_rate,
-            'calculation_details' => [
-                'base_calculation' => $baseAmount,
-                'bonus_multiplier' => $investment->bonus_multiplier,
-                'final_amount' => $amount,
-            ],
-        ]);
-    }
-
-    /**
-     * Mettre à jour l'investissement après le claim
-     */
-    private function updateInvestmentAfterClaim(Investment $investment, float $amount): void
-    {
-        $investment->update([
-            'last_claim_at' => now(),
-            'next_claim_at' => now()->addDay(),
-            'total_claimed' => $investment->total_claimed + $amount,
-            'claims_count' => $investment->claims_count + 1,
-        ]);
-
-        // Vérifier si l'investissement est terminé
-        if ($investment->end_at && now()->isAfter($investment->end_at)) {
-            $investment->update(['status' => 'completed']);
-        }
-    }
-
-    /**
-     * Créer la transaction de claim
-     */
-    private function createClaimTransaction(User $user, Claim $claim, float $amount): Transaction
-    {
-        return Transaction::create([
-            'user_id' => $user->id,
-            'type' => 'claim',
-            'category' => 'staking',
-            'amount' => 0,
-            'balance_before' => $user->balance_pi,
-            'balance_after' => $user->balance_pi,
-            'status' => 'completed',
-            'investment_id' => $claim->investment_id,
-            'claim_id' => $claim->id,
-            'description' => 'Daily claim credited to claimable balance',
-            'processed_at' => now(),
-            'metadata' => [
-                'credited_to' => $claim->investment->source === 'bonus' ? 'claimable_bonus' : 'claimable',
-                'amount' => $amount,
-            ],
-        ]);
-    }
-
-    /**
-     * Obtenir tous les investissements claimables pour un utilisateur
-     */
     public function getClaimableInvestments(User $user): array
     {
         return $user->investments()
@@ -172,18 +153,16 @@ class ClaimService
             ->toArray();
     }
 
-    /**
-     * Claim en masse pour tous les investissements claimables
-     */
-    public function claimAll(User $user): array
+    public function claimAll(User $user, ?string $forDate = null): array
     {
+        $forDate = $forDate ?: now()->toDateString();
         $claimableInvestments = $this->getClaimableInvestments($user);
         $claims = [];
         $errors = [];
 
         foreach ($claimableInvestments as $investment) {
             try {
-                $claims[] = $this->processClaim($user, $investment);
+                $claims[] = $this->processClaim($user, $investment, $forDate);
             } catch (Exception $e) {
                 $errors[] = [
                     'investment_id' => $investment->id,
@@ -199,9 +178,6 @@ class ClaimService
         ];
     }
 
-    /**
-     * Obtenir les statistiques de claim pour un utilisateur
-     */
     public function getUserClaimStats(User $user): array
     {
         $claimableInvestments = $this->getClaimableInvestments($user);
@@ -210,7 +186,9 @@ class ClaimService
         return [
             'claimable_count' => count($claimableInvestments),
             'potential_claim_amount' => collect($claimableInvestments)->sum(function ($investment) {
-                return $this->calculateClaimAmount($investment);
+                $base = Money::mul($investment->amount, $investment->daily_rate);
+                $amt = Money::mul($base, $investment->bonus_multiplier);
+                return (float) Money::round($amt);
             }),
             'todays_claims_count' => $todaysClaims->count(),
             'todays_claims_amount' => $todaysClaims->sum('final_amount'),
