@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 
 class UserLevelService
 {
@@ -34,6 +35,7 @@ class UserLevelService
                 'current_level' => $newLevel,
                 'level_updated_at' => now(),
             ]);
+            Cache::forget('user_level:' . $user->id);
             
             return true;
         }
@@ -112,6 +114,13 @@ class UserLevelService
     public function getLevelRate(string $level): float
     {
         return $this->levelRates[$level] ?? 0.0;
+    }
+
+    public function getCachedUserLevel(User $user): string
+    {
+        return Cache::remember('user_level:' . $user->id, 600, function () use ($user) {
+            return $this->calculateUserLevel($user->total_invested);
+        });
     }
 
     /**

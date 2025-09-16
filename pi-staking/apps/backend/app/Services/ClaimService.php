@@ -7,6 +7,8 @@ use App\Models\Investment;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Support\Money;
+use App\Support\StructuredLogger;
+use App\Support\Metrics;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\QueryException;
@@ -98,6 +100,14 @@ class ClaimService
                             'amount' => (float) $amount,
                         ],
                     ]);
+
+                    \App\Support\StructuredLogger::event('claim_processed', [
+                        'user_id' => $user->id,
+                        'investment_id' => $investment->id,
+                        'amount' => (float) $amount,
+                        'outcome' => 'success',
+                    ]);
+                    \App\Support\Metrics::inc('claims_processed_total');
 
                     if ($investment->source === 'bonus') {
                         $this->ledgerService->moveExternalToUser($user->id, 'claimable_bonus', $amount, 'claim', (string) $claim->id, [
