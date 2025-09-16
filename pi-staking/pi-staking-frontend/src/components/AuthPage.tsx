@@ -89,7 +89,7 @@ export function AuthPage({ onBack }: AuthPageProps) {
       <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full pi-gradient animate-pi-pulse mb-4">
-            <span className="text-2xl font-bold text-white">π</span>
+            <span className="text-2xl font-bold text-white">Pi</span>
           </div>
           <h1 className="text-3xl font-bold pi-purple">Pi Staking</h1>
           <p className="text-muted-foreground mt-2">Plateforme de staking Pi Network</p>

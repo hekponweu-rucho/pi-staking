@@ -139,7 +139,7 @@ export function DashboardStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold pi-purple">
-            <AnimatedCounter value={stats.totalBalance} decimals={2} suffix=" π" />
+            <AnimatedCounter value={stats.totalBalance} decimals={2} suffix=" Pi" />
           </div>
           <p className="text-xs text-muted-foreground">Disponible pour staking</p>
         </CardContent>
@@ -153,7 +153,7 @@ export function DashboardStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold pi-gold">
-            <AnimatedCounter value={stats.totalStaked} decimals={0} suffix=" π" />
+            <AnimatedCounter value={stats.totalStaked} decimals={0} suffix=" Pi" />
           </div>
           <p className="text-xs text-muted-foreground">
             En cours dans {stats.activeInvestments} investment{stats.activeInvestments > 1 ? 's' : ''}
@@ -169,7 +169,7 @@ export function DashboardStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-green-600">
-            <AnimatedCounter value={stats.totalClaimed} decimals={2} suffix=" π" />
+            <AnimatedCounter value={stats.totalClaimed} decimals={2} suffix=" Pi" />
           </div>
           <p className="text-xs text-muted-foreground">Récompenses obtenues</p>
         </CardContent>
@@ -183,7 +183,7 @@ export function DashboardStats() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-orange-600">
-            <AnimatedCounter value={stats.dailyEarnings} decimals={2} suffix=" π" />
+            <AnimatedCounter value={stats.dailyEarnings} decimals={2} suffix=" Pi" />
           </div>
           <p className="text-xs text-muted-foreground">Revenus par jour</p>
         </CardContent>

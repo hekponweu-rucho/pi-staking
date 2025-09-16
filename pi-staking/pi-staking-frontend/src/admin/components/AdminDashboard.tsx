@@ -204,7 +204,7 @@ export function AdminDashboard() {
     labels: analytics?.tvl_evolution.map(d => new Date(d.date).toLocaleDateString('fr-FR')) || [],
     datasets: [
       {
-        label: 'TVL (π)',
+        label: 'TVL (Pi)',
         data: analytics?.tvl_evolution.map(d => d.amount) || [],
         borderColor: '#7B2CBF',
         backgroundColor: 'rgba(123, 44, 191, 0.1)',
@@ -258,7 +258,7 @@ export function AdminDashboard() {
         
         <StatCard
           title="TVL (Total Value Locked)"
-          value={`${formatCurrency(financial.tvl)} π`}
+          value={`${formatCurrency(financial.tvl)} Pi`}
           icon={DollarSign}
           variant="success"
           description="Valeur totale verrouillée"
@@ -266,7 +266,7 @@ export function AdminDashboard() {
         
         <StatCard
           title="Revenus Plateforme"
-          value={`${formatCurrency(financial.platform_revenue)} π`}
+          value={`${formatCurrency(financial.platform_revenue)} Pi`}
           icon={TrendingUp}
           variant="success"
           description="Frais et commissions"
@@ -427,7 +427,7 @@ export function AdminDashboard() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">{formatCurrency(pkg.total_volume)} π</p>
+                      <p className="font-semibold">{formatCurrency(pkg.total_volume)} Pi</p>
                       <p className="text-sm text-muted-foreground">Volume total</p>
                     </div>
                   </div>
@@ -478,7 +478,7 @@ export function AdminDashboard() {
                 <p className="text-sm text-muted-foreground">Transactions Complétées</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-500">{formatCurrency(financial.daily_volume)} π</p>
+                <p className="text-2xl font-bold text-yellow-500">{formatCurrency(financial.daily_volume)} Pi</p>
                 <p className="text-sm text-muted-foreground">Volume Journalier</p>
               </div>
               <div className="text-center">

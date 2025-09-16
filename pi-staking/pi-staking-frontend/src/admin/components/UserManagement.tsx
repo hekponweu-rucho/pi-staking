@@ -178,7 +178,7 @@ function UserDetailsModal({ user, onClose, onUserUpdate }: UserDetailsModalProps
                   </div>
                   <div>
                     <Label>Solde actuel</Label>
-                    <p className="font-medium">{user.balance_pi.toFixed(2)} π</p>
+                    <p className="font-medium">{user.balance_pi.toFixed(2)} Pi</p>
                   </div>
                   <div>
                     <Label>Niveau</Label>
@@ -213,13 +213,13 @@ function UserDetailsModal({ user, onClose, onUserUpdate }: UserDetailsModalProps
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center p-4 rounded-lg bg-green-500/10">
                     <p className="text-2xl font-bold text-green-500">
-                      {user.total_invested.toFixed(2)} π
+                      {user.total_invested.toFixed(2)} Pi
                     </p>
                     <p className="text-sm text-muted-foreground">Total Investi</p>
                   </div>
                   <div className="text-center p-4 rounded-lg bg-blue-500/10">
                     <p className="text-2xl font-bold text-blue-500">
-                      {user.total_claimed.toFixed(2)} π
+                      {user.total_claimed.toFixed(2)} Pi
                     </p>
                     <p className="text-sm text-muted-foreground">Total Réclamé</p>
                   </div>
@@ -322,7 +322,7 @@ function UserDetailsModal({ user, onClose, onUserUpdate }: UserDetailsModalProps
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="balanceAdjustment">Ajustement de Solde (π)</Label>
+                      <Label htmlFor="balanceAdjustment">Ajustement de Solde (Pi)</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -577,10 +577,10 @@ export function UserManagement() {
                         {getStatusBadge(user.status)}
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono">{formatCurrency(user.balance_pi)} π</span>
+                        <span className="font-mono">{formatCurrency(user.balance_pi)} Pi</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-mono">{formatCurrency(user.total_invested)} π</span>
+                        <span className="font-mono">{formatCurrency(user.total_invested)} Pi</span>
                       </TableCell>
                       <TableCell>
                         {formatDate(user.created_at)}

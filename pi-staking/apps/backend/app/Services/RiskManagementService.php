@@ -255,29 +255,30 @@ class RiskManagementService
      */
     private function checkWithdrawalLimits(User $user, float $amount): array
     {
-        $userLimits = $this->getUserLimits($user);
-        
-        // Vérifier retrait unique maximum
-        if ($amount > $userLimits['max_single_withdrawal']) {
+        $min = (float) config('staking.withdrawals.min_amount', 2);
+        if ($amount < $min) {
             return [
                 'allowed' => false,
-                'reason' => sprintf('Montant maximum par retrait: %.2f Pi', $userLimits['max_single_withdrawal']),
+                'reason' => sprintf('Le montant minimum de retrait est de %.0f Pi', $min),
             ];
         }
-        
-        // Vérifier limite quotidienne de retrait
-        $todayWithdrawals = $user->withdrawalRequests()
-            ->whereDate('created_at', today())
-            ->whereIn('status', ['pending', 'processing', 'completed'])
+
+        $level = $user->current_level ?: 'bronze';
+        $caps = config('staking.withdrawals.daily_caps', []);
+        $cap = (float) ($caps[$level] ?? ($caps['bronze'] ?? 20));
+
+        $approvedToday = $user->withdrawalRequests()
+            ->where('status', 'approved')
+            ->whereDate('processed_at', today('UTC'))
             ->sum('amount');
-            
-        if ($todayWithdrawals + $amount > $userLimits['max_daily_withdrawal_amount']) {
+
+        if ($approvedToday + $amount > $cap) {
             return [
                 'allowed' => false,
-                'reason' => sprintf('Limite quotidienne de retrait atteinte: %.2f Pi', $userLimits['max_daily_withdrawal_amount']),
+                'reason' => sprintf('Limite quotidienne de retrait atteinte: %.0f Pi', $cap),
             ];
         }
-        
+
         return ['allowed' => true];
     }
 

@@ -179,7 +179,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold pi-gold">
-              {activeInvestments.reduce((sum, inv) => sum + inv.amount, 0).toFixed(0)} π
+              {activeInvestments.reduce((sum, inv) => sum + inv.amount, 0).toFixed(0)} Pi
             </div>
             <p className="text-xs text-muted-foreground">
               En cours d'investment
@@ -194,7 +194,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {activeInvestments.reduce((sum, inv) => sum + (inv.amount * inv.daily_rate), 0).toFixed(2)} π
+              {activeInvestments.reduce((sum, inv) => sum + (inv.amount * inv.daily_rate), 0).toFixed(2)} Pi
             </div>
             <p className="text-xs text-muted-foreground">
               Estimés par jour
@@ -234,7 +234,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                     <TableCell className="font-medium">
                       {investment.package?.name || `Package #${investment.staking_package_id}`}
                     </TableCell>
-                    <TableCell>{investment.amount.toFixed(2)} π</TableCell>
+                    <TableCell>{investment.amount.toFixed(2)} Pi</TableCell>
                     <TableCell className="text-green-600">
                       {(investment.daily_rate * 100).toFixed(2)}%/jour
                     </TableCell>
@@ -250,7 +250,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                       </div>
                     </TableCell>
                     <TableCell className="text-green-600">
-                      {investment.claimed_amount.toFixed(2)} π
+                      {investment.claimed_amount.toFixed(2)} Pi
                     </TableCell>
                     <TableCell>
                       {investment.next_claim_at ? (

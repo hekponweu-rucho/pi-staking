@@ -193,12 +193,12 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Minimum</p>
-                    <p className="font-semibold">{pkg.min_amount.toLocaleString()} π</p>
+                    <p className="font-semibold">{pkg.min_amount.toLocaleString()}  Pi</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Maximum</p>
                     <p className="font-semibold">
-                      {pkg.max_amount ? `${pkg.max_amount.toLocaleString()} π` : 'Illimité'}
+                      {pkg.max_amount ? `${pkg.max_amount.toLocaleString()}  Pi` : 'Illimité'}
                     </p>
                   </div>
                 </div>
@@ -224,7 +224,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Retour quotidien min:</span>
                     <span className="font-medium text-green-600">
-                      {minReturns.dailyReturn.toFixed(2)} π
+                      {minReturns.dailyReturn.toFixed(2)}  Pi
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -248,7 +248,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
 
                 {user && user.balance_pi < pkg.min_amount && (
                   <p className="text-xs text-destructive text-center">
-                    Solde insuffisant (minimum: {pkg.min_amount} π)
+                    Solde insuffisant (minimum: {pkg.min_amount}  Pi)
                   </p>
                 )}
               </CardContent>
@@ -313,7 +313,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                         max={investment.selectedPackage.max_amount || undefined}
                         className="flex-1"
                       />
-                      <span className="text-muted-foreground">π</span>
+                      <span className="text-muted-foreground"> Pi</span>
                     </div>
                     
                     <Slider
@@ -326,9 +326,9 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                     />
                     
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Min: {investment.selectedPackage.min_amount.toLocaleString()}π</span>
+                      <span>Min: {investment.selectedPackage.min_amount.toLocaleString()} Pi</span>
                       <span>
-                        Max: {Math.min(investment.selectedPackage.max_amount || Number.MAX_VALUE, user?.balance_pi || 0).toLocaleString()}π
+                        Max: {Math.min(investment.selectedPackage.max_amount || Number.MAX_VALUE, user?.balance_pi || 0).toLocaleString()} Pi
                       </span>
                     </div>
                   </div>
@@ -342,13 +342,13 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Retour quotidien:</span>
                         <span className="font-semibold text-green-600">
-                          <AnimatedCounter value={returns.dailyReturn} decimals={2} suffix="π" />
+                          <AnimatedCounter value={returns.dailyReturn} decimals={2} suffix=" Pi" />
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Retour total estimé:</span>
                         <span className="font-semibold">
-                          <AnimatedCounter value={returns.totalReturn} decimals={2} suffix="π" />
+                          <AnimatedCounter value={returns.totalReturn} decimals={2} suffix=" Pi" />
                         </span>
                       </div>
                       <div className="flex justify-between border-t border-border/50 pt-2">
@@ -416,7 +416,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                     </div>
                     <div className="flex justify-between">
                       <span>Montant:</span>
-                      <span className="font-medium">{investment.amount.toLocaleString()}π</span>
+                      <span className="font-medium">{investment.amount.toLocaleString()} Pi</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Taux quotidien:</span>
@@ -433,7 +433,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                       return (
                         <div className="flex justify-between border-t border-border pt-2">
                           <span>Retour total estimé:</span>
-                          <span className="font-semibold text-green-600">{returns.totalReturn.toFixed(2)}π</span>
+                          <span className="font-semibold text-green-600">{returns.totalReturn.toFixed(2)} Pi</span>
                         </div>
                       );
                     })()}
@@ -489,8 +489,8 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                   </div>
                   <h3 className="text-lg font-semibold mb-2">Investment Actif</h3>
                   <p className="text-muted-foreground mb-4">
-                    Votre investment de {investment.amount.toLocaleString()}π dans le package "{investment.selectedPackage.name}" 
-                    génère maintenant {(investment.amount * investment.selectedPackage.daily_rate).toFixed(2)}π par jour
+                    Votre investment de {investment.amount.toLocaleString()} Pi dans le package "{investment.selectedPackage.name}" 
+                    génère maintenant {(investment.amount * investment.selectedPackage.daily_rate).toFixed(2)} Pi par jour
                   </p>
                   <p className="text-sm text-green-600 font-medium">
                     Première réclamation disponible dans 24 heures

@@ -17,12 +17,12 @@ class TransactionController extends Controller
     public function createWithdrawal(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'amount' => 'required|numeric|min:20',
+            'amount' => 'required|numeric|min:2',
             'withdrawal_address' => 'nullable|string|max:255',
             'note' => 'nullable|string|max:500',
         ], [
             'amount.required' => 'Le montant est requis.',
-            'amount.min' => 'Le montant minimum de retrait est de 20 Pi.',
+            'amount.min' => 'Le montant minimum de retrait est de 2 Pi.',
             'withdrawal_address.max' => 'L\'adresse de retrait ne peut pas dépasser 255 caractères.',
             'note.max' => 'La note ne peut pas dépasser 500 caractères.',
         ]);
@@ -55,31 +55,20 @@ class TransactionController extends Controller
             ], 422);
         }
 
-        // Vérifier les limites quotidiennes/mensuelles
-        $dailyLimit = config('staking.limits.daily_withdrawal', 1000);
-        $monthlyLimit = config('staking.limits.monthly_withdrawal', 10000);
+        // Vérifier la limite quotidienne selon le niveau utilisateur
+        $level = $user->current_level ?: 'bronze';
+        $caps = config('staking.withdrawals.daily_caps', []);
+        $dailyLimit = (float) ($caps[$level] ?? ($caps['bronze'] ?? 20));
         
-        $todayWithdrawn = $user->withdrawalRequests()
+        $todayApproved = $user->withdrawalRequests()
             ->where('status', 'approved')
             ->whereDate('processed_at', today())
             ->sum('amount');
-            
-        $monthlyWithdrawn = $user->withdrawalRequests()
-            ->where('status', 'approved')
-            ->where('processed_at', '>=', now()->startOfMonth())
-            ->sum('amount');
 
-        if ($todayWithdrawn + $amount > $dailyLimit) {
+        if ($todayApproved + $amount > $dailyLimit) {
             return response()->json([
                 'success' => false,
                 'message' => 'Limite quotidienne de retrait dépassée. Limite : ' . $dailyLimit . ' Pi.'
-            ], 422);
-        }
-
-        if ($monthlyWithdrawn + $amount > $monthlyLimit) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Limite mensuelle de retrait dépassée. Limite : ' . $monthlyLimit . ' Pi.'
             ], 422);
         }
 
@@ -226,7 +215,7 @@ class TransactionController extends Controller
             'data' => [
                 'withdrawals' => $withdrawals,
                 'limits' => [
-                    'daily_limit' => config('staking.limits.daily_withdrawal', 1000),
+                    'daily_limit' => (float) (($caps = config('staking.withdrawals.daily_caps', []))[$user->current_level ?: 'bronze'] ?? ($caps['bronze'] ?? 20)),
                     'monthly_limit' => config('staking.limits.monthly_withdrawal', 10000),
                     'daily_used' => $user->withdrawalRequests()
                         ->where('status', 'approved')

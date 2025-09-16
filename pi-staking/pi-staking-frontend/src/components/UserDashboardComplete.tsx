@@ -354,12 +354,12 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
           return;
         }
         if (amountNum < chosen.min_amount) {
-          window.alert(`Le montant doit être ≥ ${formatCurrency(chosen.min_amount)} π`);
+          window.alert(`Le montant doit être ≥ ${formatCurrency(chosen.min_amount)} Pi`);
           setReinvestLoading(false);
           return;
         }
         if (chosen.max_amount && amountNum > chosen.max_amount) {
-          window.alert(`Le montant doit être ≤ ${formatCurrency(chosen.max_amount)} π`);
+          window.alert(`Le montant doit être ≤ ${formatCurrency(chosen.max_amount)} Pi`);
           setReinvestLoading(false);
           return;
         }
@@ -391,7 +391,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
         <div className="container mx-auto flex h-20 items-center justify-between px-4">
           <div className="flex items-center space-x-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full pi-gradient animate-pi-pulse">
-              <span className="text-xl font-bold text-white">π</span>
+              <span className="text-xl font-bold text-white">Pi</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold">Pi Staking Dashboard</h1>
@@ -414,7 +414,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </Button>
               </div>
               <p className="text-2xl font-bold text-pi-primary">
-                {showBalance ? `${formatCurrency(Number(user?.balance_pi ?? 0))} π` : '****'}
+                {showBalance ? `${formatCurrency(Number(user?.balance_pi ?? 0))} Pi` : '****'}
               </p>
             </div>
 
@@ -516,7 +516,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-pi-primary">
-                    {formatCurrency(calculatedTotalInvested)} π
+                    {formatCurrency(calculatedTotalInvested)} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">
                     +{investments?.length || 0} investissements
@@ -531,7 +531,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(Number((user as any)?.balance_pi || 0) - Number((user as any)?.pending_withdrawal || 0))} π
+                    {formatCurrency(Number((user as any)?.balance_pi || 0) - Number((user as any)?.pending_withdrawal || 0))} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">Après réservations de retraits</p>
                 </CardContent>
@@ -544,7 +544,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(Number((user as any)?.claimable_balance || 0))} π
+                    {formatCurrency(Number((user as any)?.claimable_balance || 0))} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">Réinvestissable dans n'importe quel package</p>
                 </CardContent>
@@ -557,7 +557,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-pi-gold">
-                    {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} π
+                    {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">Réinvestissable seulement dans Discovery</p>
                 </CardContent>
@@ -577,7 +577,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     <div>
                       <p className="text-sm text-muted-foreground">Disponible</p>
                       <p className="text-xl font-bold">
-                        {formatCurrency(Number((user as any)?.bonus_balance ?? 0))} π
+                        {formatCurrency(Number((user as any)?.bonus_balance ?? 0))} Pi
                       </p>
                     </div>
                     <div>
@@ -635,7 +635,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     </select>
                   </div>
                   <div>
-                    <Label>Montant (π)</Label>
+                    <Label>Montant (Pi)</Label>
                     <Input
                       type="number"
                       placeholder="0.00"
@@ -650,7 +650,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Solde gains: {formatCurrency(Number((user as any)?.claimable_balance || 0))} π • Gains bonus: {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} π • Réservé: {formatCurrency(Number((user as any)?.pending_withdrawal || 0))} π
+                  Solde gains: {formatCurrency(Number((user as any)?.claimable_balance || 0))} Pi • Gains bonus: {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} Pi • Réservé: {formatCurrency(Number((user as any)?.pending_withdrawal || 0))} Pi
                 </p>
               </CardContent>
             </GlowCard>
@@ -697,7 +697,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               >
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-5 w-5" />
-                  <span>Retirer des π</span>
+                  <span>Retirer des Pi</span>
                 </div>
               </Button>
             </div>
@@ -733,7 +733,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} π
+                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi
                         </p>
                         <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
                           {transaction.status}
@@ -764,7 +764,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium">{pkg.name}</span>
                               <span className="text-sm text-muted-foreground">
-                                {formatCurrency(pkgTotal)} π ({percentage.toFixed(1)}%)
+                                {formatCurrency(pkgTotal)} Pi ({percentage.toFixed(1)}%)
                               </span>
                             </div>
                             <Progress value={percentage} className="h-2" />
@@ -809,7 +809,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Minimum</p>
-                        <p className="font-bold">{formatCurrency(pkg.min_amount)} π</p>
+                        <p className="font-bold">{formatCurrency(pkg.min_amount)} Pi</p>
                       </div>
                     </div>
                   </CardHeader>
@@ -828,7 +828,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       <div className="flex justify-between">
                         <span>Maximum:</span>
                         <span className="font-medium">
-                          {pkg.max_amount ? `${formatCurrency(pkg.max_amount)} π` : 'Illimité'}
+                          {pkg.max_amount ? `${formatCurrency(pkg.max_amount)} Pi` : 'Illimité'}
                         </span>
                       </div>
                     </div>
@@ -879,13 +879,13 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       </div>
                       
                       <div className="text-center">
-                        <p className="text-2xl font-bold">{formatCurrency(investment.amount)} π</p>
+                        <p className="text-2xl font-bold">{formatCurrency(investment.amount)} Pi</p>
                         <p className="text-sm text-muted-foreground">Investi</p>
                       </div>
                       
                       <div className="text-center">
                         <p className="text-2xl font-bold text-green-600">
-                          +{formatCurrency(investment.total_earned || 0)} π
+                          +{formatCurrency(investment.total_earned || 0)} Pi
                         </p>
                         <p className="text-sm text-muted-foreground">Gagné</p>
                       </div>
@@ -974,7 +974,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     className="bg-pi-gold hover:bg-pi-gold/90 text-white"
                   >
                     <Gift className="h-4 w-4 mr-2" />
-                    Tout Réclamer ({formatCurrency(totalClaimable)} π)
+                    Tout Réclamer ({formatCurrency(totalClaimable)} Pi)
                   </Button>
                 )}
                 <Button onClick={() => refreshAllData()} variant="outline">
@@ -996,13 +996,13 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                           {investment.investment?.package?.name || 'Package inconnu'}
                         </h3>
                         <p className="text-muted-foreground">
-                          Investissement de {formatCurrency(investment.amount)} π
+                          Investissement de {formatCurrency(investment.amount)} Pi
                         </p>
                       </div>
                       
                       <div className="text-right">
                         <p className="text-2xl font-bold text-pi-gold">
-                          +{formatCurrency(investment.claimable_amount)} π
+                          +{formatCurrency(investment.claimable_amount)} Pi
                         </p>
                         <p className="text-sm text-muted-foreground">À réclamer</p>
                       </div>
@@ -1067,13 +1067,13 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <div>
                     <p className="text-sm text-muted-foreground">Limite Journalière</p>
                     <p className="text-xl font-bold">
-                      {formatCurrency(withdrawalLimits.daily)} π
+                      {formatCurrency(withdrawalLimits.daily)} Pi
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Limite Mensuelle</p>
                     <p className="text-xl font-bold">
-                      {formatCurrency(withdrawalLimits.monthly)} π
+                      {formatCurrency(withdrawalLimits.monthly)} Pi
                     </p>
                   </div>
                 </div>
@@ -1111,7 +1111,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       
                       <div className="text-right">
                         <p className="text-lg font-semibold">
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} π
+                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi
                         </p>
                         <Badge 
                           variant={
@@ -1324,11 +1324,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 <CardContent className="space-y-4">
                   <div className="flex justify-between">
                     <span>Total investi:</span>
-                    <span className="font-bold">{formatCurrency(calculatedTotalInvested)} π</span>
+                    <span className="font-bold">{formatCurrency(calculatedTotalInvested)} Pi</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Total gagné:</span>
-                    <span className="font-bold text-green-600">+{formatCurrency(totalEarnings)} π</span>
+                    <span className="font-bold text-green-600">+{formatCurrency(totalEarnings)} Pi</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Investissements actifs:</span>
@@ -1374,10 +1374,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </div>
               
               <div className="space-y-2">
-                <Label>Montant à investir (π)</Label>
+                <Label>Montant à investir (Pi)</Label>
                 <Input
                   type="number"
-                  placeholder={`Minimum: ${formatCurrency(selectedPackage.min_amount)} π`}
+                  placeholder={`Minimum: ${formatCurrency(selectedPackage.min_amount)} Pi`}
                   value={investmentForm.amount}
                   onChange={(e) => setInvestmentForm({
                     ...investmentForm,
@@ -1385,7 +1385,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   })}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Solde disponible: {formatCurrency(Number(user?.balance_pi ?? 0))} π
+                  Solde disponible: {formatCurrency(Number(user?.balance_pi ?? 0))} Pi
                 </p>
               </div>
               
@@ -1424,10 +1424,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </Alert>
             
             <div className="space-y-2">
-              <Label>Montant à retirer (π)</Label>
+              <Label>Montant à retirer (Pi)</Label>
               <Input
                 type="number"
-                placeholder="Montant en π"
+                placeholder="Montant en Pi"
                 value={withdrawalForm.amount}
                 onChange={(e) => setWithdrawalForm({
                   ...withdrawalForm,
@@ -1435,7 +1435,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 })}
               />
               <p className="text-xs text-muted-foreground">
-                Limite journalière: {formatCurrency(withdrawalLimits.daily)} π
+                Limite journalière: {formatCurrency(withdrawalLimits.daily)} Pi
               </p>
             </div>
             

@@ -375,7 +375,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
               </div>
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Volume Total</p>
-                <p className="text-sm font-bold">{formatCurrency(adminStats.totalVolume)} π</p>
+                <p className="text-sm font-bold">{formatCurrency(adminStats.totalVolume)} Pi</p>
               </div>
             </div>
 
@@ -487,7 +487,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-pi-primary">
-                    {formatCurrency(adminStats.totalVolume)} π
+                    {formatCurrency(adminStats.totalVolume)} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">
                     +8% ce mois
@@ -502,7 +502,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(adminStats.monthlyRevenue)} π
+                    {formatCurrency(adminStats.monthlyRevenue)} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">
                     +15% vs mois dernier
@@ -622,7 +622,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                       </div>
                       <div className="text-right">
                         <p className="font-medium">
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))} π
+                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(Math.abs(transaction.amount))} Pi
                         </p>
                         <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
                           {transaction.status}
@@ -738,13 +738,13 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                           </TableCell>
                           <TableCell>{user.email}</TableCell>
                           <TableCell className="font-mono">
-                            {formatCurrency(user.balance_pi)} π
+                            {formatCurrency(user.balance_pi)} Pi
                           </TableCell>
                           <TableCell className="font-mono">
-                            {formatCurrency(user.total_invested)} π
+                            {formatCurrency(user.total_invested)} Pi
                           </TableCell>
                           <TableCell className="font-mono text-green-600">
-                            +{formatCurrency(user.total_claimed || 0)} π
+                            +{formatCurrency(user.total_claimed || 0)} Pi
                           </TableCell>
                           <TableCell>
                             <Badge variant={user.is_active ? 'default' : 'destructive'}>
@@ -956,7 +956,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                             </Badge>
                           </TableCell>
                           <TableCell className="font-mono">
-                            {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} π
+                            {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi
                           </TableCell>
                           <TableCell>
                             <Badge variant={
@@ -1092,7 +1092,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Minimum:</span>
-                        <span className="font-semibold">{formatCurrency(pkg.minimum_amount)} π</span>
+                        <span className="font-semibold">{formatCurrency(pkg.minimum_amount)} Pi</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Fréquence claims:</span>
@@ -1108,7 +1108,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                       </div>
                       <div className="flex justify-between text-sm">
                         <span>Volume total:</span>
-                        <span className="font-medium">2,450 π</span>
+                        <span className="font-medium">2,450 Pi</span>
                       </div>
                     </div>
                   </CardContent>
@@ -1172,7 +1172,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </CardHeader>
                 <CardContent>
                   <div className="text-3xl font-bold text-pi-primary mb-2">
-                    {formatCurrency(45250)} π
+                    {formatCurrency(45250)} Pi
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Volume total période
@@ -1180,7 +1180,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                   <div className="mt-4">
                     <div className="flex justify-between text-sm">
                       <span>Nouveau:</span>
-                      <span className="font-medium text-green-600">+{formatCurrency(8340)} π</span>
+                      <span className="font-medium text-green-600">+{formatCurrency(8340)} Pi</span>
                     </div>
                   </div>
                 </CardContent>
@@ -1324,13 +1324,13 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                     [2024-01-15 10:30:15] INFO: User registration successful - user_id: 123
                   </div>
                   <div className="text-sm font-mono bg-muted/50 p-2 rounded">
-                    [2024-01-15 10:29:42] INFO: Investment created - amount: 100π, package: gold
+                    [2024-01-15 10:29:42] INFO: Investment created - amount: 100 Pi, package: gold
                   </div>
                   <div className="text-sm font-mono bg-red-500/10 p-2 rounded text-red-600">
                     [2024-01-15 10:28:33] ERROR: Payment gateway timeout - retry scheduled
                   </div>
                   <div className="text-sm font-mono bg-muted/50 p-2 rounded">
-                    [2024-01-15 10:27:21] INFO: Claim processed successfully - reward: 2.5π
+                    [2024-01-15 10:27:21] INFO: Claim processed successfully - reward: 2.5 Pi
                   </div>
                 </div>
               </CardContent>
@@ -1501,12 +1501,12 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label>Limite de retrait journalier min (π)</Label>
+                    <Label>Limite de retrait journalier min (Pi)</Label>
                     <Input type="number" value={configState?.min_withdrawal ?? ''} onChange={(e) => setConfigState({ ...configState, min_withdrawal: e.target.value })} className="mt-1" />
                   </div>
                   
                   <div>
-                    <Label>Limite de retrait mensuel max (π)</Label>
+                    <Label>Limite de retrait mensuel max (Pi)</Label>
                     <Input type="number" value={configState?.max_withdrawal ?? ''} onChange={(e) => setConfigState({ ...configState, max_withdrawal: e.target.value })} className="mt-1" />
                   </div>
                   
@@ -1632,7 +1632,7 @@ export function AdminDashboardComplete({ onLogout }: AdminDashboardCompleteProps
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Minimum (π)</Label>
+                <Label>Minimum (Pi)</Label>
                 <Input
                   type="number"
                   value={packageForm.minimum_amount}

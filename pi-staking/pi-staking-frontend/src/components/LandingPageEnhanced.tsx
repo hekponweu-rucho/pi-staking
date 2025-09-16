@@ -55,8 +55,8 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         id: pkg.id,
         name: pkg.name,
         description: pkg.description,
-        minAmount: `${pkg.min_amount}π`,
-        maxAmount: pkg.max_amount ? `${pkg.max_amount}π` : "Illimité",
+        minAmount: `${pkg.min_amount} Pi`,
+        maxAmount: pkg.max_amount ? `${pkg.max_amount} Pi` : "Illimité",
         dailyRate: `${(pkg.daily_rate * 100).toFixed(1)}%`,
         duration: `${pkg.max_duration_days} jours`,
         totalReturn: `${((pkg.daily_rate * pkg.max_duration_days) * 100).toFixed(0)}%`,
@@ -67,8 +67,8 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         id: '1',
         name: "Discovery",
         description: "Pour débuter dans l'écosystème Pi",
-        minAmount: "10π",
-        maxAmount: "100π",
+        minAmount: "10 Pi",
+        maxAmount: "100 Pi",
         dailyRate: "2.0%",
         duration: "30 jours",
         totalReturn: "60%",
@@ -78,8 +78,8 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         id: '2',
         name: "Bronze",
         description: "Le choix idéal pour les investisseurs réguliers",
-        minAmount: "100π",
-        maxAmount: "500π",
+        minAmount: "100 Pi",
+        maxAmount: "500 Pi",
         dailyRate: "2.2%",
         duration: "60 jours",
         totalReturn: "132%",
@@ -89,8 +89,8 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         id: '3',
         name: "Silver",
         description: "Rendements optimisés pour investisseurs sérieux",
-        minAmount: "500π",
-        maxAmount: "2000π",
+        minAmount: "500 Pi",
+        maxAmount: "2000 Pi",
         dailyRate: "2.5%",
         duration: "90 jours",
         totalReturn: "225%",
@@ -100,8 +100,8 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         id: '4',
         name: "Gold",
         description: "Package premium avec bonus exclusifs",
-        minAmount: "2000π",
-        maxAmount: "10000π",
+        minAmount: "2000 Pi",
+        maxAmount: "10000 Pi",
         dailyRate: "2.8%",
         duration: "120 jours",
         totalReturn: "336%",
@@ -154,15 +154,15 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
     { 
       label: "Volume Total Verrouillé", 
       value: dashboardState.dashboardData?.statistics.platform_tvl 
-        ? `${(dashboardState.dashboardData.statistics.platform_tvl / 1000000).toFixed(1)}M π`
-        : "2.5M π", 
+        ? `${(dashboardState.dashboardData.statistics.platform_tvl / 1000000).toFixed(1)}M  Pi`
+        : "2.5M  Pi", 
       icon: Coins 
     },
     { 
       label: "Gains Distribués", 
       value: stakingState.totalClaimed > 0 
-        ? `${(stakingState.totalClaimed / 1000).toFixed(0)}K π`
-        : "500K π", 
+        ? `${(stakingState.totalClaimed / 1000).toFixed(0)}K  Pi`
+        : "500K  Pi", 
       icon: TrendingUp 
     },
     { 
@@ -191,7 +191,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center space-x-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full pi-gradient animate-pi-pulse">
-              <span className="text-lg font-bold text-white">π</span>
+              <span className="text-lg font-bold text-white"> Pi</span>
             </div>
             <div className="flex flex-col">
               <h1 className="text-xl font-bold text-pi-gradient">Pi Staking</h1>
@@ -236,7 +236,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
               {!authState.welcomeBonusClaimed && (
                 <div className="inline-flex items-center gap-2 rounded-full border border-pi-gold/30 bg-pi-gold/10 px-6 py-2 text-sm font-medium text-pi-gold backdrop-blur-sm animate-pi-shimmer">
                   <Gift className="h-4 w-4" />
-                  <span>🎉 BONUS DE BIENVENUE : 100π OFFERTS + 20% de bonus sur votre premier dépôt !</span>
+                  <span>🎉 BONUS DE BIENVENUE : 100 Pi OFFERTS + 20% de bonus sur votre premier dépôt !</span>
                 </div>
               )}
 
@@ -252,7 +252,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
               </h1>
               
               <p className="mx-auto max-w-2xl text-xl text-muted-foreground md:text-2xl">
-                La plateforme de staking #1 pour Pi Network. Investissez vos π et gagnez jusqu'à{" "}
+                La plateforme de staking #1 pour Pi Network. Investissez vos  Pi et gagnez jusqu'à{" "}
                 <span className="font-bold text-pi-gold">2.8% par jour</span> avec nos packages sécurisés.
               </p>
 
@@ -439,7 +439,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
                     ))}
                   </div>
                   <p className="text-muted-foreground mb-4">
-                    "Interface incroyable et gains réguliers ! J'ai déjà gagné plus de 500π en seulement 2 mois."
+                    "Interface incroyable et gains réguliers ! J'ai déjà gagné plus de 500 Pi en seulement 2 mois."
                   </p>
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full pi-gradient flex items-center justify-center text-white font-bold">
@@ -507,7 +507,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
               {!authState.isAuthenticated && (
                 <div className="inline-flex items-center gap-2 rounded-full border border-pi-gold/30 bg-pi-gold/10 px-6 py-2 text-sm font-medium text-pi-gold backdrop-blur-sm animate-pi-bounce">
                   <Gift className="h-4 w-4" />
-                  <span>🔥 OFFRE LIMITÉE : Bonus de 100π + 20% sur votre premier dépôt !</span>
+                  <span>🔥 OFFRE LIMITÉE : Bonus de 100 Pi + 20% sur votre premier dépôt !</span>
                 </div>
               )}
               
@@ -515,7 +515,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
                 {authState.isAuthenticated ? (
                   <>
                     Prêt à investir vos{" "}
-                    <span className="text-pi-gradient">π aujourd'hui</span> ?
+                    <span className="text-pi-gradient"> Pi aujourd'hui</span> ?
                   </>
                 ) : (
                   <>
@@ -529,7 +529,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
                 {authState.isAuthenticated ? (
                   `Accédez à votre dashboard pour gérer vos investissements et réclamez vos gains quotidiens.`
                 ) : (
-                  "Rejoignez plus de 15,000 investisseurs qui font confiance à Pi Staking pour faire fructifier leurs π."
+                  "Rejoignez plus de 15,000 investisseurs qui font confiance à Pi Staking pour faire fructifier leurs  Pi."
                 )}
               </p>
               
@@ -543,7 +543,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
                 ) : (
                   <Button size="lg" className="pi-gradient text-white hover:pi-gradient-hover glow-pi-strong group text-lg px-12 py-6" onClick={onRegister}>
                     <Gift className="mr-2 h-6 w-6" />
-                    <span>Réclamez vos 100π Gratuits</span>
+                    <span>Réclamez vos 100 Pi Gratuits</span>
                     <ArrowRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                   </Button>
                 )}
@@ -581,7 +581,7 @@ export const LandingPageEnhanced: React.FC<LandingPageProps> = ({
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full pi-gradient">
-                  <span className="text-lg font-bold text-white">π</span>
+                  <span className="text-lg font-bold text-white"> Pi</span>
                 </div>
                 <div className="flex flex-col">
                   <h3 className="font-bold text-pi-gradient">Pi Staking</h3>

@@ -293,7 +293,7 @@ class ClaimsService {
 
   // Formater les montants en PI avec les bonnes décimales
   formatPiAmount(amount: number): string {
-    return `${amount.toFixed(4)} π`;
+    return `${amount.toFixed(4)} Pi`;
   }
 
   // Calculer le pourcentage de progression de réclamation

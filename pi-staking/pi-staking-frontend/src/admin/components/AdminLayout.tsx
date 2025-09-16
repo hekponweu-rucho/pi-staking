@@ -131,7 +131,7 @@ export function AdminLayout({ children, currentSection, onSectionChange }: Admin
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             <div className="flex h-8 w-8 items-center justify-center rounded-full pi-gradient">
-              <span className="text-sm font-bold text-white">π</span>
+              <span className="text-sm font-bold text-white">Pi</span>
             </div>
             <span className="font-semibold">Admin</span>
           </div>
@@ -165,7 +165,7 @@ export function AdminLayout({ children, currentSection, onSectionChange }: Admin
             <div className="p-6 border-b border-border/50">
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full pi-gradient animate-pi-pulse">
-                  <span className="text-lg font-bold text-white">π</span>
+                  <span className="text-lg font-bold text-white">Pi</span>
                 </div>
                 <div>
                   <h1 className="text-lg font-bold">Pi Staking Admin</h1>

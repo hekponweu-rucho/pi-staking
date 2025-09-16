@@ -15,6 +15,16 @@ return [
         'diamond' => env('RATE_DIAMOND', 0.002),
     ],
 
+    'apy' => [
+        'discovery' => env('APY_DISCOVERY', 0.04),
+        'bronze' => env('APY_BRONZE', 0.04),
+        'silver' => env('APY_SILVER', 0.05),
+        'gold' => env('APY_GOLD', 0.06),
+        'diamond' => env('APY_DIAMOND', 0.07),
+    ],
+
+    'rate_mode' => env('RATE_MODE', 'simple'),
+
     'levels' => [
         'bronze' => env('LEVEL_BRONZE_THRESHOLD', 500),
         'silver' => env('LEVEL_SILVER_THRESHOLD', 2500),
@@ -24,13 +34,19 @@ return [
 
     'bonus' => [
         'discovery_amount' => env('BONUS_DISCOVERY_AMOUNT', 50),
-        'discovery_days' => env('BONUS_DISCOVERY_DAYS', 30),
+        'discovery_days' => env('BONUS_DISCOVERY_DAYS', 90),
         'expiration_days' => env('BONUS_EXPIRATION_DAYS', 90),
     ],
 
     'withdrawals' => [
-        'min_amount' => env('WITHDRAWAL_MIN_AMOUNT', 20),
-        'max_daily' => env('WITHDRAWAL_MAX_DAILY', 10000),
+        'min_amount' => env('WITHDRAWAL_MIN_AMOUNT', 2),
+        'daily_caps' => [
+            'discovery' => env('WITHDRAWAL_CAP_DISCOVERY', 20),
+            'bronze' => env('WITHDRAWAL_CAP_BRONZE', 20),
+            'silver' => env('WITHDRAWAL_CAP_SILVER', 50),
+            'gold' => env('WITHDRAWAL_CAP_GOLD', 100),
+            'diamond' => env('WITHDRAWAL_CAP_DIAMOND', 200),
+        ],
     ],
 
     'referrals' => [

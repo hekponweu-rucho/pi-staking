@@ -187,9 +187,9 @@ class DashboardService {
 
   // === UTILS ===
 
-  formatCurrency(amount: number, currency: string = 'π'): string {
-    if (currency === 'π') {
-      return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} π`;
+  formatCurrency(amount: number, currency: string = 'Pi'): string {
+    if (currency === 'Pi') {
+      return `${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })} Pi`;
     }
     return `${amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`;
   }

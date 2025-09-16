@@ -95,7 +95,7 @@ export function SecureWithdrawal() {
     }
 
     if (limits && amountNum > limits.remaining) {
-      setError(`Montant supérieur à votre limite journalière restante (${limits.remaining.toFixed(2)} π)`);
+      setError(`Montant supérieur à votre limite journalière restante (${limits.remaining.toFixed(2)} Pi)`);
       return false;
     }
 
@@ -108,7 +108,7 @@ export function SecureWithdrawal() {
     
     const amountNum = parseFloat(amount);
     
-    // Vérifier si 2FA est requis (seuil par défaut: 100π)
+    // Vérifier si 2FA est requis (seuil par défaut: 100 Pi)
     const requires2FA = amountNum >= 100;
     
     if (requires2FA) {
@@ -311,22 +311,22 @@ export function SecureWithdrawal() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span>Limite journalière ({limits.level}):</span>
-                    <span className="font-mono">{limits.daily_limit.toFixed(2)} π</span>
+                    <span className="font-mono">{limits.daily_limit.toFixed(2)} Pi</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Déjà utilisé aujourd'hui:</span>
-                    <span className="font-mono">{limits.used_today.toFixed(2)} π</span>
+                    <span className="font-mono">{limits.used_today.toFixed(2)} Pi</span>
                   </div>
                   <div className="flex justify-between font-medium">
                     <span>Restant:</span>
-                    <span className="font-mono text-green-600">{limits.remaining.toFixed(2)} π</span>
+                    <span className="font-mono text-green-600">{limits.remaining.toFixed(2)} Pi</span>
                   </div>
                 </div>
               </div>
             )}
 
             <div className="space-y-3">
-              <Label htmlFor="amount">Montant à retirer (π)</Label>
+              <Label htmlFor="amount">Montant à retirer (Pi)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -373,7 +373,7 @@ export function SecureWithdrawal() {
                 <div>
                   <p className="font-medium">Montant élevé détecté</p>
                   <p className="text-sm text-muted-foreground">
-                    Le retrait de {currentStep.data?.amount.toFixed(2)} π nécessite une vérification 2FA
+                    Le retrait de {currentStep.data?.amount.toFixed(2)} Pi nécessite une vérification 2FA
                   </p>
                 </div>
               </div>
@@ -430,7 +430,7 @@ export function SecureWithdrawal() {
                 <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <p className="font-medium mb-2">Dernière étape de sécurité</p>
                   <p className="text-sm text-muted-foreground">
-                    Pour finaliser le retrait de {currentStep.data?.amount.toFixed(2)} π, 
+                    Pour finaliser le retrait de {currentStep.data?.amount.toFixed(2)} Pi, 
                     nous devons vérifier votre identité par email et/ou SMS.
                   </p>
                 </div>
@@ -574,7 +574,7 @@ export function SecureWithdrawal() {
               <div>
                 <h3 className="text-lg font-semibold">Retrait traité avec succès !</h3>
                 <p className="text-muted-foreground">
-                  Votre demande de retrait de {currentStep.data?.amount.toFixed(2)} π a été confirmée
+                  Votre demande de retrait de {currentStep.data?.amount.toFixed(2)} Pi a été confirmée
                 </p>
               </div>
 
