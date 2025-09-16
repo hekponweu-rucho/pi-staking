@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\StructuredLogger;
+use App\Support\Metrics;
 
 class AdminWithdrawalController extends Controller
 {
@@ -160,6 +162,13 @@ class AdminWithdrawalController extends Controller
                     'status_before' => $beforeStatus,
                     'status_after' => $withdrawal->status,
                 ]);
+                StructuredLogger::event('withdrawal_approved', [
+                    'user_id' => $user->id,
+                    'amount' => (float) $withdrawal->amount,
+                    'outcome' => 'success',
+                    'meta' => ['withdrawal_id' => $withdrawal->id, 'admin_id' => $admin->id]
+                ]);
+                Metrics::inc('withdrawals_approved_total');
 
                 if (class_exists(\App\Models\Audit::class)) {
                     \App\Models\Audit::create([
@@ -237,6 +246,13 @@ class AdminWithdrawalController extends Controller
                 'status_before' => $beforeStatus,
                 'status_after' => $withdrawal->status,
             ]);
+            StructuredLogger::event('withdrawal_declined', [
+                'user_id' => $user->id,
+                'amount' => (float) $withdrawal->amount,
+                'outcome' => 'declined',
+                'meta' => ['withdrawal_id' => $withdrawal->id, 'admin_id' => $admin->id, 'reason' => $validated['reason'] ?? null]
+            ]);
+            Metrics::inc('withdrawals_rejected_total');
 
             if (class_exists(\App\Models\Audit::class)) {
                 \App\Models\Audit::create([

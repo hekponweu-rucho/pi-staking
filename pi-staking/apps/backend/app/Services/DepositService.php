@@ -9,6 +9,8 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\StructuredLogger;
+use App\Support\Metrics;
 use Exception;
 
 class DepositService
@@ -177,6 +179,12 @@ class DepositService
                 'pending_deposit_id' => $deposit?->id,
             ]);
 
+            StructuredLogger::event('deposit_detected', [
+                'user_id' => $deposit?->user_id,
+                'amount' => (float) $amount,
+                'meta' => ['address' => $address, 'tx_hash' => $txHash]
+            ]);
+
             if (!$deposit) {
                 return;
             }
@@ -244,6 +252,13 @@ class DepositService
                     'status_after' => $deposit->status,
                 ]);
 
+                Metrics::inc('suspicious_deposits_total');
+                StructuredLogger::event('risk_flagged', [
+                    'user_id' => $deposit->user_id,
+                    'outcome' => 'suspicious',
+                    'meta' => ['reason' => 'double_spend', 'tx_hash' => $txHash]
+                ]);
+
                 $this->createAudit(
                     actorId: $deposit->user_id,
                     action: 'deposit.double_spend_rejected',
@@ -284,6 +299,13 @@ class DepositService
                     'tx_hash' => $txHash,
                     'status_before' => $before,
                     'status_after' => $deposit->status,
+                ]);
+
+                Metrics::inc('suspicious_deposits_total');
+                StructuredLogger::event('risk_flagged', [
+                    'user_id' => $deposit->user_id,
+                    'outcome' => 'suspicious',
+                    'meta' => ['reason' => 'out_of_bounds', 'amount' => $amountF, 'min' => $min, 'max' => $max]
                 ]);
 
                 $this->createAudit(
@@ -341,6 +363,13 @@ class DepositService
                 'tx_hash' => $txHash,
                 'status_before' => $before,
                 'status_after' => $deposit->status,
+            ]);
+
+            StructuredLogger::event('deposit_confirmed', [
+                'user_id' => $user->id,
+                'amount' => $amountF,
+                'outcome' => 'success',
+                'meta' => ['tx_hash' => $txHash, 'deposit_id' => $deposit->id]
             ]);
 
             $this->createAudit(

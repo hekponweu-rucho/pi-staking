@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\BonusGrant;
 use App\Models\Transaction;
+use App\Support\StructuredLogger;
 
 class StakingController extends Controller
 {
@@ -83,6 +84,13 @@ class StakingController extends Controller
             );
 
             $investment->load('stakingPackage');
+
+            StructuredLogger::event('investment_created', [
+                'user_id' => $user->id,
+                'investment_id' => $investment->id,
+                'amount' => (float) $investment->amount,
+                'outcome' => 'success',
+            ]);
 
             return response()->json([
                 'success' => true,

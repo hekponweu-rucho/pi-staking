@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\BonusGrant;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Exception;
 
 class StakingService
@@ -61,6 +62,7 @@ class StakingService
 
             // Mettre à jour les totaux utilisateur
             $user->increment('total_invested', $amount);
+            \Illuminate\Support\Facades\Cache::forget('user_level:'.$user->id);
 
             // Mettre à jour le niveau utilisateur
             $this->userLevelService->updateUserLevel($user);
@@ -129,7 +131,7 @@ class StakingService
      */
     public function getAvailablePackages(User $user): array
     {
-        $packages = StakingPackage::active()->ordered()->get();
+        $packages = Cache::remember('staking:packages:active', 300, fn() => StakingPackage::active()->ordered()->get());
         
         return $packages->filter(function ($package) use ($user) {
             return $package->canBeUsedBy($user);

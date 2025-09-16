@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Support\StructuredLogger;
+use App\Support\Metrics;
 
 class TransactionController extends Controller
 {
@@ -112,6 +114,14 @@ class TransactionController extends Controller
                     ],
                 ]);
             });
+
+            StructuredLogger::event('withdrawal_requested', [
+                'user_id' => $user->id,
+                'amount' => (float) $amount,
+                'outcome' => 'success',
+                'meta' => ['withdrawal_id' => $withdrawalRequest->id]
+            ]);
+            Metrics::inc('withdrawals_requested_total');
 
             return response()->json([
                 'success' => true,

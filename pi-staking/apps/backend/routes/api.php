@@ -25,6 +25,19 @@ Route::get('/health', function () {
     return response()->json(['status' => 'OK', 'timestamp' => now()]);
 });
 
+Route::get('/metrics', function (Request $request) {
+    if (!config('metrics.enabled')) {
+        return response('metrics disabled', 404);
+    }
+    $token = config('metrics.token');
+    $provided = $request->header('X-Metrics-Token');
+    if ($token && $provided !== $token) {
+        return response('forbidden', 403);
+    }
+    $content = \App\Support\Metrics::renderPrometheus();
+    return response($content, 200, ['Content-Type' => 'text/plain; version=0.0.4']);
+});
+
 // Routes d'authentification (publiques)
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -368,6 +381,7 @@ Route::middleware('auth:sanctum')->group(function () {
             ]);
             
             $package = \App\Models\StakingPackage::create($validated);
+            \Illuminate\Support\Facades\Cache::forget('staking:packages:active');
             return response()->json(['success' => true, 'data' => $package]);
         });
         Route::patch('/packages/{package}', function($packageId) {
@@ -388,6 +402,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'sort_order' => 'nullable|integer'
             ]);
             $package->update($data);
+            \Illuminate\Support\Facades\Cache::forget('staking:packages:active');
             return response()->json(['success' => true, 'data' => $package]);
         });
         
