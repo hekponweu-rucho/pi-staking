@@ -207,6 +207,21 @@ class StakingService {
     }
   }
 
+  // Réinvestissement rapide: utilise claimable_balance et choisit un package éligible
+  async reinvestQuick(): Promise<{ success: boolean; message: string; data: any }> {
+    try {
+      const response = await api.post('/staking/reinvest-quick');
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors du réinvestissement rapide:', error);
+      return {
+        success: false,
+        data: null,
+        message: error.response?.data?.message || 'Impossible d\'effectuer le réinvestissement rapide',
+      };
+    }
+  }
+
   // ✅ Calculer les statistiques de staking pour l'utilisateur
   async getStakingStats(): Promise<{
     success: boolean;

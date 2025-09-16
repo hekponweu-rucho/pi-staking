@@ -218,14 +218,25 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     }
   };
 
+  const [claimAllLoading, setClaimAllLoading] = useState(false);
+  const [reinvestQuickLoading, setReinvestQuickLoading] = useState(false);
+
   const handleClaimAll = async () => {
-    if (!claimableInvestments?.length) return;
-    
+    if (!safeClaimableInvestments?.length) return;
     try {
-      await claimsService.bulkClaim();
+      setClaimAllLoading(true);
+      const ids = safeClaimableInvestments.map((c: any) => Number(c.investment_id || c.id)).filter(Boolean);
+      const res = await claimsService.bulkClaim(ids);
+      if (!res.success) {
+        window.alert(res.message || 'Échec de la réclamation en masse');
+      }
       await refreshAllData();
+      await refreshUser();
     } catch (error) {
       console.error('Erreur réclamation:', error);
+      window.alert('Erreur lors de la réclamation');
+    } finally {
+      setClaimAllLoading(false);
     }
   };
 
@@ -681,14 +692,51 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
               <Button 
                 onClick={handleClaimAll}
-                disabled={!claimableInvestments?.length}
+                disabled={!safeClaimableInvestments?.length || claimAllLoading}
+                aria-busy={claimAllLoading}
                 className="h-16 bg-pi-gold hover:bg-pi-gold/90 text-white"
               >
                 <div className="flex flex-col items-center gap-2">
                   <Gift className="h-5 w-5" />
-                  <span>Réclamer Tout ({claimableInvestments?.length || 0})</span>
+                  <span>{claimAllLoading ? 'Réclamation...' : `Réclamer Tout (${safeClaimableInvestments?.length || 0})`}</span>
                 </div>
               </Button>
+
+              {(() => {
+                const cb = Number((user as any)?.claimable_balance || 0);
+                const eligible = [...regularPackages].sort((a:any,b:any)=>a.min_amount-b.min_amount).find((p:any)=> cb >= Number(p.min_amount));
+                return (
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        setReinvestQuickLoading(true);
+                        const res = await stakingService.reinvestQuick();
+                        if (!res.success) {
+                          window.alert(res.message || 'Échec du réinvestissement rapide');
+                        } else {
+                          window.alert(`Réinvestissement rapide: ${formatCurrency(res.data?.reinvested_amount || 0)} Pi`);
+                        }
+                        await refreshAllData();
+                        await refreshUser();
+                      } catch (e) {
+                        console.error(e);
+                        window.alert('Erreur lors du réinvestissement rapide');
+                      } finally {
+                        setReinvestQuickLoading(false);
+                      }
+                    }}
+                    disabled={!eligible || reinvestQuickLoading}
+                    aria-busy={reinvestQuickLoading}
+                    variant="outline"
+                    className="h-16"
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      <span>{reinvestQuickLoading ? 'Réinvest. rapide...' : 'Réinvestissement rapide'}</span>
+                    </div>
+                  </Button>
+                );
+              })()}
 
               <Button 
                 onClick={() => setShowWithdrawModal(true)}
@@ -972,9 +1020,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <Button 
                     onClick={handleClaimAll}
                     className="bg-pi-gold hover:bg-pi-gold/90 text-white"
+                    disabled={claimAllLoading}
+                    aria-busy={claimAllLoading}
                   >
                     <Gift className="h-4 w-4 mr-2" />
-                    Tout Réclamer ({formatCurrency(totalClaimable)} Pi)
+                    {claimAllLoading ? 'Réclamation...' : `Tout Réclamer (${formatCurrency(totalClaimable)} Pi)`}
                   </Button>
                 )}
                 <Button onClick={() => refreshAllData()} variant="outline">
@@ -982,6 +1032,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   Actualiser
                 </Button>
               </div>
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              Min retrait: 2 Pi • Caps/jour: Bronze 20, Silver 50, Gold 100, Diamond 200 Pi • Taux journaliers approx.: Discovery 2.5%, Bronze 0.8%, Silver 0.5%, Gold 0.3%, Diamond 0.2%
             </div>
 
             {/* Réclamations disponibles */}

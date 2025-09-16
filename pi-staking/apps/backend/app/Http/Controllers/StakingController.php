@@ -210,6 +210,75 @@ class StakingController extends Controller
     }
 
     /**
+     * Réinvestissement rapide depuis claimable_balance vers un package éligible
+     */
+    public function reinvestQuick(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $balance = (float) ($user->claimable_balance ?? 0);
+        if ($balance <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun gain réinvestissable disponible.'
+            ], 422);
+        }
+
+        // Trouver un package régulier actif disponible pour l'utilisateur, trié par min_amount croissant
+        $candidate = StakingPackage::active()
+            ->regular()
+            ->orderBy('min_amount')
+            ->get()
+            ->first(function ($pkg) use ($user, $balance) {
+                return $pkg->canBeUsedBy($user) && (float) $pkg->min_amount <= $balance;
+            });
+
+        if (!$candidate) {
+            // Trouver le plus petit min_amount éligible pour un message clair
+            $smallest = StakingPackage::active()->regular()->orderBy('min_amount')->get()
+                ->first(fn($pkg) => $pkg->canBeUsedBy($user));
+
+            $minTxt = $smallest ? (string) $smallest->min_amount : '—';
+            return response()->json([
+                'success' => false,
+                'message' => $smallest
+                    ? "Votre solde réinvestissable est inférieur au minimum requis (min {$minTxt} Pi)."
+                    : "Aucun package éligible disponible pour votre niveau."
+            ], 422);
+        }
+
+        // Montant à réinvestir: tout le solde claimable, borné par max_amount du package si présent
+        $amount = $balance;
+        if (!empty($candidate->max_amount) && (float) $candidate->max_amount > 0) {
+            $amount = min($amount, (float) $candidate->max_amount);
+        }
+
+        try {
+            $investment = \DB::transaction(function () use ($user, $candidate, $amount) {
+                return $this->stakingService->createInvestment($user, $candidate, (float) $amount, 'claimable')->load('stakingPackage');
+            });
+
+            $user->refresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Réinvestissement rapide effectué avec succès',
+                'data' => [
+                    'investment' => $investment,
+                    'reinvested_amount' => (float) $amount,
+                    'remaining_claimable' => (float) $user->claimable_balance,
+                    'package' => $investment->stakingPackage,
+                ],
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
      * Réinvestir le bonus de bienvenue dans le package Discovery
      */
     public function reinvestBonus(Request $request): JsonResponse

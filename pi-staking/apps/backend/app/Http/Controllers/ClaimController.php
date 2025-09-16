@@ -8,6 +8,8 @@ use App\Services\ClaimService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ClaimController extends Controller
 {
@@ -93,6 +95,135 @@ class ClaimController extends Controller
                 'success' => false,
                 'message' => 'Erreur lors du traitement : ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Claim groupé atomique et idempotent
+     * Body: { investment_ids: number[], idempotency_key: string }
+     */
+    public function bulkClaim(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'investment_ids' => 'required|array|min:1',
+            'investment_ids.*' => 'integer',
+            'idempotency_key' => 'required|string|min:6|max:100',
+        ], [
+            'investment_ids.required' => 'La liste des investissements est requise.',
+            'investment_ids.min' => 'Au moins un investissement est requis.',
+            'idempotency_key.required' => "La clé d'idempotence est requise.",
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreurs de validation',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $user = $request->user();
+        $ids = array_unique(array_map('intval', $request->input('investment_ids', [])));
+        sort($ids);
+        $idempotencyKey = (string) $request->input('idempotency_key');
+
+        // Retour idempotent si déjà traité
+        $cacheKey = 'idempo:bulk_claim:' . $user->id . ':' . $idempotencyKey;
+        if (Cache::has($cacheKey)) {
+            $cached = Cache::get($cacheKey);
+            return response()->json($cached);
+        }
+
+        // Prévalidation: appartenances + éligibilité
+        $investments = $user->investments()->whereIn('id', $ids)->get();
+        $notFound = array_values(array_diff($ids, $investments->pluck('id')->toArray()));
+        if (!empty($notFound)) {
+            $resp = [
+                'success' => false,
+                'message' => 'Certains investissements sont introuvables.',
+                'data' => [
+                    'missing_investment_ids' => $notFound,
+                ],
+            ];
+            // Ne pas mettre en cache les erreurs de validation d’entrée
+            return response()->json($resp, 404);
+        }
+
+        // Vérifier qu'ils sont tous claimables maintenant pour éviter demi-traitements
+        $precheckErrors = [];
+        foreach ($investments as $inv) {
+            if (!$inv->canClaim()) {
+                $precheckErrors[] = [
+                    'investment_id' => $inv->id,
+                    'error' => "Non éligible au claim pour le moment",
+                ];
+            }
+        }
+        if (!empty($precheckErrors)) {
+            $resp = [
+                'success' => false,
+                'message' => 'Aucun changement effectué: des investissements ne sont pas éligibles.',
+                'data' => [
+                    'errors' => $precheckErrors,
+                    'eligible_count' => count($investments) - count($precheckErrors),
+                ],
+            ];
+            // Idempotence: on peut mettre en cache un résultat d’échec logique court
+            Cache::put($cacheKey, $resp, now()->addMinutes(30));
+            return response()->json($resp, 422);
+        }
+
+        // Traitement atomique sous transaction
+        try {
+            $result = DB::transaction(function () use ($user, $investments) {
+                $details = [];
+                $total = 0.0;
+
+                foreach ($investments as $inv) {
+                    // L’idempotence par jour est aussi assurée au niveau du service
+                    $claim = $this->claimService->processClaim($user, $inv);
+                    $amount = (float) $claim->final_amount;
+                    $details[] = [
+                        'investment_id' => $inv->id,
+                        'status' => 'success',
+                        'amount' => $amount,
+                        'claim_id' => $claim->id,
+                        'claimed_for_day' => $claim->claimed_for_day?->toDateString(),
+                    ];
+                    $total += $amount;
+                }
+
+                return [
+                    'details' => $details,
+                    'total' => round($total, 8),
+                ];
+            });
+
+            $response = [
+                'success' => true,
+                'message' => sprintf('Réclamation groupée réussie: %d élément(s), total %.8f Pi', count($result['details']), $result['total']),
+                'data' => [
+                    'total_claimed' => $result['total'],
+                    'claims' => $result['details'],
+                    'idempotency_key' => $idempotencyKey,
+                    'user' => $user->fresh(),
+                ],
+            ];
+            // Mettre en cache le résultat pour idempotence (TTL 6h)
+            Cache::put($cacheKey, $response, now()->addHours(6));
+
+            return response()->json($response);
+        } catch (\Throwable $e) {
+            $resp = [
+                'success' => false,
+                'message' => 'Échec de la réclamation groupée: ' . $e->getMessage(),
+                'data' => [
+                    'idempotency_key' => $idempotencyKey,
+                ],
+            ];
+            // Mettre un cache court pour éviter retry flood immédiat
+            Cache::put($cacheKey, $resp, now()->addMinutes(5));
+            return response()->json($resp, 422);
         }
     }
 
