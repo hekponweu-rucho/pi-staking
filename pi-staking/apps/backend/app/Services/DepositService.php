@@ -13,6 +13,10 @@ use Exception;
 
 class DepositService
 {
+    public function __construct(private LedgerService $ledgerService)
+    {
+    }
+
     public function assignAddressForUser(User $user): array
     {
         return DB::transaction(function () use ($user) {
@@ -322,6 +326,11 @@ class DepositService
                 'transaction_hash' => $txHash,
                 'description' => 'Dépôt Pi confirmé',
                 'processed_at' => now(),
+            ]);
+
+            $this->ledgerService->moveExternalToUser($user->id, 'principal', $amountF, 'deposit', (string) $deposit->id, [
+                'address_id' => $addr->id,
+                'tx_hash' => $txHash,
             ]);
 
             Log::channel('daily')->info('Dépôt confirmé', [

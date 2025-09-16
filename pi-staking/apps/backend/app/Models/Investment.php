@@ -144,15 +144,13 @@ class Investment extends Model
      */
     public function calculateNextClaimAmount(): float
     {
-        $baseAmount = $this->amount * $this->daily_rate * $this->bonus_multiplier;
-        
-        // Appliquer les bonus de streak si éligible
+        $base = \App\Support\Money::mul($this->amount, $this->daily_rate);
+        $adj = \App\Support\Money::mul($base, $this->bonus_multiplier);
         if ($this->stakingPackage->features['streak_bonus_eligible'] ?? false) {
-            $streakBonus = $this->user->streak_bonus;
-            $baseAmount *= (1 + $streakBonus);
+            $streak = $this->user->streak_bonus ?? 0;
+            $adj = \App\Support\Money::mul($adj, (string) (1 + (float) $streak));
         }
-
-        return round($baseAmount, 8);
+        return (float) \App\Support\Money::round($adj);
     }
 
     /**

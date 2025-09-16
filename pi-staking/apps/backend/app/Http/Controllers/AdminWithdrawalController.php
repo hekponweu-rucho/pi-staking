@@ -147,6 +147,10 @@ class AdminWithdrawalController extends Controller
                 $txn->admin_notes = $validated['admin_notes'] ?? null;
                 $txn->save();
 
+                app(\App\Services\LedgerService::class)->moveUserToExternal($user->id, 'pending_withdrawal', $withdrawal->amount, 'withdrawal', (string) $withdrawal->id, [
+                    'transaction_id' => $txn->id,
+                ]);
+
                 Log::channel('daily')->info('Approbation admin d\'un retrait', [
                     'action' => 'admin_withdrawal_approved',
                     'admin_id' => $admin->id,
@@ -218,6 +222,10 @@ class AdminWithdrawalController extends Controller
                 $withdrawal->admin_notes = $validated['admin_notes'];
             }
             $withdrawal->save();
+
+            app(\App\Services\LedgerService::class)->move($user->id, 'pending_withdrawal', $user->id, 'principal', $withdrawal->amount, 'withdrawal_reject', (string) $withdrawal->id, [
+                'transaction_id' => $txn?->id,
+            ]);
 
             Log::channel('daily')->info('Rejet admin d\'un retrait', [
                 'action' => 'admin_withdrawal_rejected',
