@@ -82,14 +82,36 @@ export interface BulkClaimResult {
 
 class ClaimsService {
   
-  // Récupérer tous les investissements réclamables
+  // Récupérer tous les investissements réclamables (normalisé)
   async getClaimableInvestments(): Promise<{ success: boolean; data: ClaimableInvestment[] }> {
     try {
       const response = await api.get('/claims/available');
-      return response.data;
+      const payload = response.data?.data || {};
+      const items = Array.isArray(payload.claimable_investments) ? payload.claimable_investments : [];
+      const mapped: ClaimableInvestment[] = items.map((it: any) => ({
+        id: String(it.investment_id),
+        investment_id: String(it.investment_id),
+        amount: Number(it.amount || 0),
+        claimable_amount: Number(it.next_claim_amount || 0),
+        last_claimed_at: null,
+        next_claim_at: it.next_claim_at,
+        can_claim: Boolean(it.can_claim_now),
+        daily_rate: 0,
+        days_since_last_claim: 0,
+        investment: {
+          id: String(it.investment_id),
+          amount: Number(it.amount || 0),
+          status: 'active',
+          package: {
+            name: it.package_name || 'Package',
+            level: 'bronze'
+          }
+        }
+      }));
+      return { success: true, data: mapped };
     } catch (error) {
       console.error('Erreur lors de la récupération des investissements réclamables:', error);
-      throw error;
+      return { success: false, data: [] };
     }
   }
 
@@ -146,14 +168,27 @@ class ClaimsService {
     }
   }
 
-  // Réclamation en masse de tous les investissements disponibles
-  async bulkClaim(): Promise<{ success: boolean; data: BulkClaimResult; message: string }> {
+  // Réclamation en masse (atomique + idempotente)
+  async bulkClaim(investmentIds?: number[]): Promise<{ success: boolean; data: any; message: string }> {
     try {
-      const response = await api.post('/claims/bulk-claim');
+      let ids = investmentIds;
+      if (!ids || !ids.length) {
+        const res = await this.getClaimableInvestments();
+        ids = res.success ? res.data.map((c) => Number(c.investment_id)) : [];
+      }
+      if (!ids || !ids.length) {
+        return { success: false, data: null, message: 'Aucun investissement éligible à réclamer' };
+      }
+      const idempotencyKey = `bulk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const response = await api.post('/claims/bulk-claim', {
+        investment_ids: ids,
+        idempotency_key: idempotencyKey
+      });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la réclamation en masse:', error);
-      throw error;
+      const message = error.response?.data?.message || 'Erreur de réclamation en masse';
+      return { success: false, data: null, message };
     }
   }
 
