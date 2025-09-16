@@ -150,11 +150,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/confirm-verification', [SecurityController::class, 'confirmWithdrawalVerification']);
             Route::get('/limits', function() {
                 $user = auth()->user();
+                $caps = config('staking.withdrawals.daily_caps', []);
                 $limits = [
-                    'bronze' => 100,
-                    'silver' => 500,
-                    'gold' => 2000,
-                    'platinum' => 10000
+                    'discovery' => $caps['discovery'] ?? ($caps['bronze'] ?? 20),
+                    'bronze' => $caps['bronze'] ?? 20,
+                    'silver' => $caps['silver'] ?? 50,
+                    'gold' => $caps['gold'] ?? 100,
+                    'diamond' => $caps['diamond'] ?? 200,
                 ];
                 
                 $todayWithdrawn = \DB::table('transactions')

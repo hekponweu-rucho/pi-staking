@@ -217,7 +217,7 @@ export function WithdrawalVerificationPage({
                     <span className="text-sm font-medium text-muted-foreground">Montant</span>
                     <div className="text-right">
                       <div className="font-bold text-lg pi-purple">
-                        π {formatPiAmount(withdrawalDetails.amount)}
+                        {formatPiAmount(withdrawalDetails.amount)} Pi
                       </div>
                     </div>
                   </div>

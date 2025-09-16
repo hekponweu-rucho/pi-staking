@@ -307,7 +307,7 @@ export function TransactionHistory() {
                           {transaction.description}
                         </TableCell>
                         <TableCell className={transaction.amount >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                          {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)} π
+                          {transaction.amount >= 0 ? '+' : ''}{transaction.amount.toFixed(2)} Pi
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">

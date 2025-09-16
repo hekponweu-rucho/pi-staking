@@ -109,7 +109,7 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                       max={maxInvestment}
                       className="flex-1"
                     />
-                    <span className="text-muted-foreground">π</span>
+                    <span className="text-muted-foreground"> Pi</span>
                   </div>
                   
                   <Slider
@@ -122,8 +122,8 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                   />
                   
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Min: {pkg.minAmount.toLocaleString()}π</span>
-                    <span>Max: {maxInvestment.toLocaleString()}π</span>
+                    <span>Min: {pkg.minAmount.toLocaleString()} Pi</span>
+                    <span>Max: {maxInvestment.toLocaleString()} Pi</span>
                   </div>
                 </div>
               </div>
@@ -133,13 +133,13 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Daily Return:</span>
                   <span className="font-semibold text-green-600">
-                    <AnimatedCounter value={dailyReturn} decimals={2} suffix="π" />
+                    <AnimatedCounter value={dailyReturn} decimals={2} suffix=" Pi" />
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Return:</span>
                   <span className="font-semibold">
-                    <AnimatedCounter value={totalReturn} decimals={2} suffix="π" />
+                    <AnimatedCounter value={totalReturn} decimals={2} suffix=" Pi" />
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-border/50 pt-2">
@@ -190,7 +190,7 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                   </div>
                   <div className="flex justify-between">
                     <span>Amount:</span>
-                    <span className="font-medium">{amount.toLocaleString()}π</span>
+                    <span className="font-medium">{amount.toLocaleString()} Pi</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Daily Rate:</span>
@@ -202,7 +202,7 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                   </div>
                   <div className="flex justify-between border-t border-border pt-2">
                     <span>Expected Total Return:</span>
-                    <span className="font-semibold text-green-600">{totalReturn.toFixed(2)}π</span>
+                    <span className="font-semibold text-green-600">{totalReturn.toFixed(2)} Pi</span>
                   </div>
                 </div>
               </div>
@@ -256,7 +256,7 @@ export function StakingModal({ package: pkg, userBalance, children }: StakingMod
                 </div>
                 <h3 className="text-lg font-semibold mb-2">Staking Active</h3>
                 <p className="text-muted-foreground mb-4">
-                  Your {amount.toLocaleString()}π investment is now earning {pkg.dailyRate}% daily returns
+                  Your {amount.toLocaleString()} Pi investment is now earning {pkg.dailyRate}% daily returns
                 </p>
                 <p className="text-sm text-green-600 font-medium">
                   First claim available in 24 hours

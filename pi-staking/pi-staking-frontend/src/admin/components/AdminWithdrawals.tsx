@@ -98,7 +98,7 @@ export function AdminWithdrawals() {
                     <span className="text-xs text-muted-foreground">{w.user?.email}</span>
                   </div>
                 </TableCell>
-                <TableCell className="font-mono">{formatCurrency(w.amount)} π</TableCell>
+                <TableCell className="font-mono">{formatCurrency(w.amount)} Pi</TableCell>
                 <TableCell>
                   <Badge variant={w.status === 'pending' || w.status === 'reviewing' ? 'secondary' : w.status === 'rejected' ? 'destructive' : 'default'} className="capitalize">
                     {w.status}

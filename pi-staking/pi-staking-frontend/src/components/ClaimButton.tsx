@@ -99,7 +99,7 @@ export function ClaimButton({
       ) : (
         <>
           <Gift className="h-3 w-3 mr-1" />
-          Réclamer <AnimatedCounter value={expectedAmount} decimals={2} suffix=" π" />
+          Réclamer <AnimatedCounter value={expectedAmount} decimals={2} suffix=" Pi" />
         </>
       )}
     </Button>

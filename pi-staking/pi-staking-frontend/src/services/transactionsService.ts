@@ -251,16 +251,16 @@ class TransactionsService {
 
       const reasons: string[] = [];
       if (amount < limits.minimum_withdrawal) {
-        reasons.push(`Montant minimum: ${limits.minimum_withdrawal} π`);
+        reasons.push(`Montant minimum: ${limits.minimum_withdrawal} Pi`);
       }
       if (amount > limits.maximum_withdrawal) {
-        reasons.push(`Montant maximum: ${limits.maximum_withdrawal} π`);
+        reasons.push(`Montant maximum: ${limits.maximum_withdrawal} Pi`);
       }
       if (amount > limits.remaining_today) {
-        reasons.push(`Limite quotidienne dépassée. Restant: ${limits.remaining_today} π`);
+        reasons.push(`Limite quotidienne dépassée. Restant: ${limits.remaining_today} Pi`);
       }
       if (amount > limits.remaining_this_month) {
-        reasons.push(`Limite mensuelle dépassée. Restant: ${limits.remaining_this_month} π`);
+        reasons.push(`Limite mensuelle dépassée. Restant: ${limits.remaining_this_month} Pi`);
       }
 
       return {
@@ -524,7 +524,7 @@ class TransactionsService {
     return `${sign}${amount.toLocaleString('fr-FR', { 
       minimumFractionDigits: 2, 
       maximumFractionDigits: 4 
-    })} π`;
+    })} Pi`;
   }
 
   // Valider une adresse de retrait

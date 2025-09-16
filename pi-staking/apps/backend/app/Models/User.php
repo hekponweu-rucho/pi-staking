@@ -233,14 +233,10 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getCurrentLevelRate(): float
     {
-        return match ($this->current_level) {
-            'discovery' => config('staking.rates.discovery', 0.025),
-            'bronze' => config('staking.rates.bronze', 0.008),
-            'silver' => config('staking.rates.silver', 0.005),
-            'gold' => config('staking.rates.gold', 0.003),
-            'diamond' => config('staking.rates.diamond', 0.002),
-            default => 0.0,
-        };
+        $level = $this->current_level ?: 'bronze';
+        $apy = (float) config("staking.apy.$level", 0.04);
+        $mode = (string) config('staking.rate_mode', 'simple');
+        return \App\Support\Rate::dailyRateFromApy($apy, $mode);
     }
 
     /**

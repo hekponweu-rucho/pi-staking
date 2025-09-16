@@ -243,7 +243,7 @@ export function ReferralDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              <AnimatedCounter value={referralInfo.total_commissions} suffix=" π" />
+              <AnimatedCounter value={referralInfo.total_commissions} suffix=" Pi" />
             </div>
             <p className="text-xs text-gray-500 mt-1">Tous niveaux confondus</p>
           </CardContent>
@@ -258,7 +258,7 @@ export function ReferralDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              <AnimatedCounter value={referralInfo.this_month_commissions} suffix=" π" />
+              <AnimatedCounter value={referralInfo.this_month_commissions} suffix=" Pi" />
             </div>
             <p className="text-xs text-gray-500 mt-1">Gains mensuels</p>
           </CardContent>
@@ -366,7 +366,7 @@ export function ReferralDashboard() {
                   </div>
                   <h3 className="font-medium mb-2">3. Vous gagnez</h3>
                   <p className="text-sm text-gray-600">
-                    Gagnez des commissions sur leurs investissements ≥ 50π
+                    Gagnez des commissions sur leurs investissements ≥ 50 Pi
                   </p>
                 </div>
               </div>

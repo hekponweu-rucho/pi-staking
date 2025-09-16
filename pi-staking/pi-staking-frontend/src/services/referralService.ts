@@ -251,12 +251,12 @@ class ReferralService {
    */
   formatPiAmount(amount: number): string {
     if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M π`;
+      return `${(amount / 1000000).toFixed(1)}M Pi`;
     }
     if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(1)}K π`;
+      return `${(amount / 1000).toFixed(1)}K Pi`;
     }
-    return `${amount.toFixed(2)} π`;
+    return `${amount.toFixed(2)} Pi`;
   }
 
   /**

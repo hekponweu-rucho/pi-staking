@@ -222,7 +222,7 @@ export function AdminDeposits() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Montant (π)</Label>
+              <Label>Montant (Pi)</Label>
               <Input type="number" step="0.00000001" value={confirmAmount} onChange={(e) => setConfirmAmount(e.target.value)} />
             </div>
             <div>

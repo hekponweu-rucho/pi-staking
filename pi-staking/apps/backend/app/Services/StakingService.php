@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Support\Rate;
+
 use App\Models\Investment;
 use App\Models\StakingPackage;
 use App\Models\User;
@@ -165,13 +167,22 @@ class StakingService
         string $origin
     ): Investment {
         $startAt = now();
+
+        $level = $package->level ?: 'bronze';
+        $apy = (float) config("staking.apy.$level", 0.04);
+        $mode = (string) config('staking.rate_mode', 'simple');
+        $dailyRate = Rate::dailyRateFromApy($apy, $mode);
+
         $endAt = $package->duration_days ? $startAt->clone()->addDays($package->duration_days) : null;
+        if ($origin === 'bonus' && $package->is_discovery_bonus) {
+            $endAt = $startAt->clone()->addDays((int) config('staking.bonus.discovery_days', 90));
+        }
 
         return Investment::create([
             'user_id' => $user->id,
             'staking_package_id' => $package->id,
             'amount' => $amount,
-            'daily_rate' => $package->daily_rate,
+            'daily_rate' => $dailyRate,
             'start_at' => $startAt,
             'end_at' => $endAt,
             'status' => 'active',

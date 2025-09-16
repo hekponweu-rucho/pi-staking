@@ -8,6 +8,7 @@ use App\Models\WithdrawalRequest;
 use App\Models\Investment;
 use App\Models\StakingPackage;
 use App\Models\Transaction;
+use App\Support\Rate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -96,12 +97,14 @@ class E2EStakingFlowTest extends TestCase
 
         \Artisan::call('staking:process-daily-earnings');
         $user->refresh();
-        $this->assertEquals(0.5, (float) $user->claimable_balance);
+        $bronzeRate = Rate::dailyRateFromApy((float) config('staking.apy.bronze', 0.04), (string) config('staking.rate_mode', 'simple'));
+        $expectedBronze = round(50 * $bronzeRate, 8);
+        $this->assertEquals($expectedBronze, (float) $user->claimable_balance);
         $this->assertEquals(0.0, (float) $user->claimable_bonus_balance);
 
         // Re-run (idempotence)
         \Artisan::call('staking:process-daily-earnings');
-        $this->assertEquals(0.5, (float) $user->fresh()->claimable_balance);
+        $this->assertEquals($expectedBronze, (float) $user->fresh()->claimable_balance);
 
         // Reinvest from claimable into Bronze
         $reinvest = $this->actingAs($user, 'sanctum')
@@ -228,6 +231,8 @@ class E2EStakingFlowTest extends TestCase
         $investment = Investment::latest('id')->first();
         $this->assertEquals('bonus', $investment->source);
         $this->assertEquals(0.0, (float) $user->fresh()->bonus_balance);
+        $this->assertNotNull($investment->end_at);
+        $this->assertEquals($investment->start_at->clone()->addDays((int) config('staking.bonus.discovery_days', 90))->toDateString(), $investment->end_at->toDateString());
 
         // Make claim available and process scheduler
         $investment->update([
@@ -236,7 +241,8 @@ class E2EStakingFlowTest extends TestCase
         ]);
         \Artisan::call('staking:process-daily-earnings');
         $user->refresh();
-        $expected = round(50 * 0.025, 8);
+        $discoveryRate = Rate::dailyRateFromApy((float) config('staking.apy.discovery', 0.04), (string) config('staking.rate_mode', 'simple'));
+        $expected = round(50 * $discoveryRate, 8);
         $this->assertEquals($expected, (float) $user->claimable_bonus_balance);
 
         // Reinvest from claimable_bonus -> compound into existing bonus investment
@@ -275,5 +281,14 @@ class E2EStakingFlowTest extends TestCase
             ]);
         $rej->assertOk();
         $this->assertEquals(0.0, (float) $user->fresh()->pending_withdrawal);
+
+        // Attempt a second bonus investment should be rejected
+        $second = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/staking/invest', [
+                'staking_package_id' => $discovery->id,
+                'amount' => 10,
+                'source' => 'bonus',
+            ]);
+        $second->assertStatus(422);
     }
 }

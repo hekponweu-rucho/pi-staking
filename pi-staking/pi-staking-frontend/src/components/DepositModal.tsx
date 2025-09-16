@@ -197,7 +197,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onOpenChange }
             Faire un dépôt en Pi
           </DialogTitle>
           <DialogDescription>
-            Envoyez vos π à l'adresse ci-dessous. L'adresse expire dans les 15 minutes.
+            Envoyez vos Pi à l'adresse ci-dessous. L'adresse expire dans les 15 minutes.
           </DialogDescription>
         </DialogHeader>
 
@@ -245,7 +245,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ open, onOpenChange }
                 </div>
                 <Progress value={progress} />
                 <p className="text-xs text-muted-foreground">
-                  Veuillez envoyer vos π avant l'expiration. L'allocation est réservée pour 15 minutes.
+                  Veuillez envoyer vos Pi avant l'expiration. L'allocation est réservée pour 15 minutes.
                 </p>
               </div>
             )}
