@@ -42,6 +42,12 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
     fetchInvestments();
   }, [refreshTrigger]);
 
+  useEffect(() => {
+    const handler = () => fetchInvestments();
+    window.addEventListener('investment_created', handler as any);
+    return () => window.removeEventListener('investment_created', handler as any);
+  }, []);
+
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(fetchInvestments, 30000);

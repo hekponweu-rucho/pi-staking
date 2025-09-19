@@ -104,6 +104,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
       if (response.success) {
         console.info('invest_success', { investment_amount: investment.amount, package_id: investment.selectedPackage.id });
         toast.success("Investissement créé avec succès");
+        window.dispatchEvent(new CustomEvent('investment_created', { detail: { package_id: investment.selectedPackage.id, amount: investment.amount } }));
         setInvestment(prev => ({ ...prev, step: 3, isLoading: false }));
         await refreshUser();
         onInvestmentSuccess?.();
