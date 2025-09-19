@@ -65,6 +65,11 @@ class StakingPackage extends Model
         return $query->where('level', $level);
     }
 
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order')->orderBy('min_amount');
+    }
+
     public function canBeUsedBy(User $user): bool
     {
         if (!$this->is_active) {
