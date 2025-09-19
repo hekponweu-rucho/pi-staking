@@ -8,6 +8,9 @@ import { GlowCard } from './GlowCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { stakingService, Investment } from '@/services/stakingService';
 import { Loader2, TrendingUp, Clock, Target } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 interface RealTimeInvestmentsProps {
   refreshTrigger?: number; // Pour forcer le refresh depuis le parent
@@ -103,51 +106,26 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
   if (isLoading) {
     return (
       <GlowCard>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin mr-4" />
-          <span>Chargement de vos investments...</span>
+        <CardContent className="p-8">
+          <LoadingSpinner label="Chargement de vos investments..." />
         </CardContent>
       </GlowCard>
     );
   }
 
   if (error) {
-    return (
-      <GlowCard>
-        <CardContent className="text-center p-8">
-          <p className="text-destructive mb-4">{error}</p>
-          <button 
-            onClick={() => fetchInvestments()}
-            className="text-primary hover:underline"
-          >
-            Réessayer
-          </button>
-        </CardContent>
-      </GlowCard>
-    );
+    return <ErrorState message={error} onRetry={fetchInvestments} />;
   }
 
   if (investments.length === 0) {
     return (
-      <GlowCard>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Aucun Investment Actif
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            Vous n'avez pas encore d'investments actifs. Commencez à investir vos Pi pour gagner des récompenses quotidiennes.
-          </p>
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('openStakingModal'))}
-            className="text-primary hover:underline"
-          >
-            Créer votre premier investment
-          </button>
-        </CardContent>
-      </GlowCard>
+      <EmptyState
+        icon={<Target className="h-8 w-8 text-muted-foreground" />}
+        title="Aucun investment actif"
+        message={"Commencez à investir vos Pi pour gagner des récompenses quotidiennes."}
+        actionLabel="Voir les packages"
+        onAction={() => window.dispatchEvent(new CustomEvent('openStakingModal'))}
+      />
     );
   }
 

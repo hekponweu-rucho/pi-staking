@@ -24,6 +24,8 @@ import {
   BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 export function ReferralDashboard() {
   const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
@@ -151,29 +153,13 @@ export function ReferralDashboard() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Chargement des données de parrainage...</p>
-        </div>
+        <LoadingSpinner label="Chargement des données de parrainage..." />
       </div>
     );
   }
 
   if (error) {
-    return (
-      <Card className="border-red-200">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-2 text-red-600 mb-2">
-            <AlertCircle className="h-5 w-5" />
-            <span className="font-medium">Erreur</span>
-          </div>
-          <p className="text-red-700 mb-4">{error}</p>
-          <Button onClick={fetchReferralData} variant="outline">
-            Réessayer
-          </Button>
-        </CardContent>
-      </Card>
-    );
+    return <ErrorState message={error} onRetry={fetchReferralData} />;
   }
 
   if (!referralInfo) {

@@ -7,20 +7,20 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ParticleBackground } from '@/components/ParticleBackground';
 import { GlowCard } from '@/components/GlowCard';
-import { 
-  Wallet, 
-  LogOut, 
-  Coins, 
-  TrendingUp, 
-  Clock, 
-  Target, 
-  Users, 
+import {
+  Wallet,
+  LogOut,
+  Coins,
+  TrendingUp,
+  Clock,
+  Target,
+  Users,
   Award,
   Plus,
   History,
@@ -44,49 +44,50 @@ import {
   PieChart,
   Activity,
   Zap,
-  Timer
+  Timer,
+  Menu,
 } from 'lucide-react';
 
-// Import des contextes
+// Contexts
 import { useAuth } from '../contexts/AuthContext';
 import { useStaking } from '../contexts/StakingContext';
 import { useDashboard } from '../contexts/DashboardContext';
 
-// Import des services
+// Services
 import { securityService } from '../services/securityService';
 import { transactionsService } from '../services/transactionsService';
 import { claimsService } from '../services/claimsService';
 import { stakingService } from '../services/stakingService';
 
-// Import du composant Parrainage
 import { ReferralDashboard } from './ReferralDashboard';
 import { DepositModal } from './DepositModal';
+import { Navbar } from '@/components/ui/Navbar';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
+import { EmailVerificationBanner } from '@/components/ui/EmailVerificationBanner';
+import { notify } from '@/components/ui/notify';
 
 interface UserDashboardCompleteProps {
   onLogout: () => void;
 }
 
 export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) {
-  const { state: authState, updateProfile, refreshUser, claimWelcomeBonus } = useAuth();
-  const user = authState.user;
+  const { state: authState, updateProfile, refreshUser, claimWelcomeBonus, checkEmailVerified } = useAuth();
+  const user = authState.user as any;
   const { state: stakingState, refreshAllData, createInvestment, claimInvestment } = useStaking();
-  const { 
-    packages, 
-    investments, 
-    claimableInvestments, 
+  const {
+    packages,
+    investments,
+    claimableInvestments,
     totalEarned,
     totalClaimed,
     activeInvestments,
     totalClaimableNow,
-    isLoading: stakingLoading 
-  } = stakingState;
+    isLoading: stakingLoading,
+  } = stakingState as any;
   const { state: dashboardState } = useDashboard();
-  const { 
-    dashboardData, 
-    financialSummary, 
-    notifications, 
-    isLoading: dashboardLoading 
-  } = dashboardState;
+  const { dashboardData, financialSummary, notifications, isLoading: dashboardLoading } = dashboardState as any;
 
   const [activeTab, setActiveTab] = useState('overview');
   const [showBalance, setShowBalance] = useState(true);
@@ -95,30 +96,33 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [notifications2FA, setNotifications2FA] = useState(false);
 
-  // Données pour les graphiques et statistiques
+  const isMobile = useIsMobile();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Data for stats
   const [performanceData, setPerformanceData] = useState<any[]>([]);
   const [withdrawalLimits, setWithdrawalLimits] = useState({ daily: 0, monthly: 0 });
   const [reinvestForm, setReinvestForm] = useState<{ source: 'claimable' | 'claimable_bonus'; packageId: string; amount: string }>({ source: 'claimable', packageId: '', amount: '' });
   const [reinvestLoading, setReinvestLoading] = useState(false);
 
-  // État pour les modales
+  // Modals
   const [showInvestModal, setShowInvestModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<StakingPackage | null>(null);
 
-  // État pour les formulaires
+  // Forms
   const [investmentForm, setInvestmentForm] = useState({
     staking_package_id: '',
-    amount: ''
+    amount: '',
   });
   const [withdrawalForm, setWithdrawalForm] = useState({
     amount: '',
-    pi_address: ''
+    pi_address: '',
   });
 
-  // Charger les données additionnelles
+  // Load additional data
   useEffect(() => {
     loadSecurityData();
     loadTransactionHistory();
@@ -128,9 +132,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const loadSecurityData = async () => {
     try {
       const logs = await securityService.getSecurityLogs();
-      setSecurityLogs(logs.data?.logs?.slice(0, 10) || []); // Dernières 10 entrées
-      // const response = await securityService.getSecurityStats();
-      // setTwoFactorEnabled(response.data?.risk_score_average > 0.8 || false);
+      setSecurityLogs(logs.data?.logs?.slice(0, 10) || []);
     } catch (error) {
       console.error('Erreur chargement sécurité:', error);
     }
@@ -139,7 +141,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const loadTransactionHistory = async () => {
     try {
       const history = await transactionsService.getTransactionHistory();
-      setTransactionHistory(history.data?.transactions?.slice(0, 10) || []); // Dernières 10 transactions
+      setTransactionHistory(history.data?.transactions?.slice(0, 10) || []);
     } catch (error) {
       console.error('Erreur chargement transactions:', error);
     }
@@ -151,7 +153,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
       const limits = limitsResponse.data?.limits;
       setWithdrawalLimits({
         daily: limits?.daily_withdrawal_limit || 0,
-        monthly: limits?.monthly_withdrawal_limit || 0
+        monthly: limits?.monthly_withdrawal_limit || 0,
       });
     } catch (error) {
       console.error('Erreur chargement limites:', error);
@@ -160,33 +162,34 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
   const handleInvestment = async () => {
     if (!selectedPackage || !investmentForm.amount) return;
-    
+
     try {
-      const source = (selectedPackage.level === 'discovery' || (selectedPackage as any).is_discovery_bonus) ? 'bonus' : 'funds';
+      const source = selectedPackage.level === 'discovery' || (selectedPackage as any).is_discovery_bonus ? 'bonus' : 'funds';
       await createInvestment(selectedPackage.id.toString(), parseFloat(investmentForm.amount), source);
-      
+
       setShowInvestModal(false);
       setInvestmentForm({ staking_package_id: '', amount: '' });
       await refreshAllData();
+      notify.success('Investment créé avec succès');
     } catch (error) {
       console.error('Erreur investissement:', error);
+      notify.error("Erreur lors de l'investissement");
     }
   };
 
   const handleWithdrawal = async () => {
     if (!withdrawalForm.amount || !withdrawalForm.pi_address) return;
-    
+
     try {
-      await transactionsService.createWithdrawal(
-        parseFloat(withdrawalForm.amount),
-        withdrawalForm.pi_address
-      );
-      
+      await transactionsService.createWithdrawal(parseFloat(withdrawalForm.amount), withdrawalForm.pi_address);
+
       setShowWithdrawModal(false);
       setWithdrawalForm({ amount: '', pi_address: '' });
       await loadTransactionHistory();
+      notify.success('Demande de retrait envoyée');
     } catch (error) {
       console.error('Erreur retrait:', error);
+      notify.error('Erreur lors du retrait');
     }
   };
 
@@ -196,11 +199,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
       if (ok) {
         await refreshUser();
         await refreshAllData();
-        window.alert('Bonus de bienvenue réclamé avec succès');
+        notify.success('Bonus de bienvenue réclamé avec succès');
       }
     } catch (e) {
       console.error(e);
-      window.alert("Échec de la réclamation du bonus");
+      notify.error('Échec de la réclamation du bonus');
     }
   };
 
@@ -208,13 +211,15 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     try {
       const res = await stakingService.reinvestBonus();
       if (res.success) {
-        window.alert('Bonus réinvesti avec succès');
+        notify.success('Bonus réinvesti avec succès');
         await refreshAllData();
         await refreshUser();
+      } else {
+        notify.error(res.message || 'Échec du réinvestissement du bonus');
       }
     } catch (e) {
       console.error(e);
-      window.alert("Échec du réinvestissement du bonus");
+      notify.error('Échec du réinvestissement du bonus');
     }
   };
 
@@ -222,19 +227,22 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const [reinvestQuickLoading, setReinvestQuickLoading] = useState(false);
 
   const handleClaimAll = async () => {
+    const safeClaimableInvestments = Array.isArray(claimableInvestments) ? claimableInvestments : [];
     if (!safeClaimableInvestments?.length) return;
     try {
       setClaimAllLoading(true);
       const ids = safeClaimableInvestments.map((c: any) => Number(c.investment_id || c.id)).filter(Boolean);
       const res = await claimsService.bulkClaim(ids);
       if (!res.success) {
-        window.alert(res.message || 'Échec de la réclamation en masse');
+        notify.error(res.message || 'Échec de la réclamation en masse');
+      } else {
+        notify.success('Réclamation effectuée');
       }
       await refreshAllData();
       await refreshUser();
     } catch (error) {
       console.error('Erreur réclamation:', error);
-      window.alert('Erreur lors de la réclamation');
+      notify.error('Erreur lors de la réclamation');
     } finally {
       setClaimAllLoading(false);
     }
@@ -244,34 +252,25 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
     try {
       if (!twoFactorEnabled) {
         const qrData = await securityService.setup2FA();
-        // Afficher QR code dans une modale
         console.log('QR Code pour 2FA:', qrData);
       } else {
-        // Pour simplifier, on utilise un mot de passe par défaut ou on demande à l'utilisateur
         await securityService.disable2FA('password_placeholder');
       }
       setTwoFactorEnabled(!twoFactorEnabled);
       await loadSecurityData();
+      notify.success('Paramètres 2FA mis à jour');
     } catch (error) {
       console.error('Erreur 2FA:', error);
+      notify.error('Erreur lors de la mise à jour 2FA');
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 8
-    }).format(amount);
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 8 }).format(amount);
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return new Date(dateString).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   const normalizedPackages = Array.isArray(packages) ? packages : (packages as any)?.packages || [];
@@ -283,12 +282,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
   const safeClaimableInvestments = Array.isArray(claimableInvestments) ? claimableInvestments : [];
   const totalClaimable = safeClaimableInvestments.reduce((sum, inv) => sum + (inv.claimable_amount || 0), 0);
 
-  const welcomeBonusClaimed = Boolean((user as any)?.welcome_bonus_claimed);
-  const welcomeBonusReinvested = Boolean((user as any)?.welcome_bonus_reinvested);
-  const bonusGrants = (user as any)?.bonus_grants || [];
-  const activeWelcomeGrant = Array.isArray(bonusGrants)
-    ? bonusGrants.find((g: any) => g?.type === 'welcome' && !g?.is_used)
-    : null;
+  const welcomeBonusClaimed = Boolean(user?.welcome_bonus_claimed);
+  const welcomeBonusReinvested = Boolean(user?.welcome_bonus_reinvested);
+  const bonusGrants = user?.bonus_grants || [];
+  const activeWelcomeGrant = Array.isArray(bonusGrants) ? bonusGrants.find((g: any) => g?.type === 'welcome' && !g?.is_used) : null;
 
   const [bonusCountdown, setBonusCountdown] = useState<string>('');
   const [bonusUrgent, setBonusUrgent] = useState<boolean>(false);
@@ -315,14 +312,9 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
       const m = Math.floor(diff / (1000 * 60));
       diff -= m * 60 * 1000;
       const s = Math.floor(diff / 1000);
-      const parts = [
-        d > 0 ? `${d}j` : null,
-        `${String(h).padStart(2, '0')}h`,
-        `${String(m).padStart(2, '0')}m`,
-        `${String(s).padStart(2, '0')}s`
-      ].filter(Boolean);
+      const parts = [d > 0 ? `${d}j` : null, `${String(h).padStart(2, '0')}h`, `${String(m).padStart(2, '0')}m`, `${String(s).padStart(2, '0')}s`].filter(Boolean);
       setBonusCountdown(parts.join(' '));
-      setBonusUrgent((new Date(activeWelcomeGrant.expires_at).getTime() - now) <= 7 * 24 * 60 * 60 * 1000);
+      setBonusUrgent(new Date(activeWelcomeGrant.expires_at).getTime() - now <= 7 * 24 * 60 * 60 * 1000);
     };
     update();
     const id = setInterval(update, 1000);
@@ -334,43 +326,42 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
       setReinvestLoading(true);
       const pkgId = reinvestForm.packageId || (reinvestForm.source === 'claimable_bonus' ? discoveryPackages[0]?.id : regularPackages[0]?.id);
       if (!pkgId) {
-        window.alert('Aucun package disponible pour ce réinvestissement');
+        notify.error('Aucun package disponible pour ce réinvestissement');
         setReinvestLoading(false);
         return;
       }
       const amountNum = parseFloat(reinvestForm.amount);
       if (!amountNum || amountNum <= 0) {
-        window.alert('Montant invalide');
+        notify.error('Montant invalide');
         setReinvestLoading(false);
         return;
       }
-      // Règles côté client
-      const cb = Number((user as any)?.claimable_balance || 0);
-      const cbb = Number((user as any)?.claimable_bonus_balance || 0);
+      const cb = Number(user?.claimable_balance || 0);
+      const cbb = Number(user?.claimable_bonus_balance || 0);
       if (reinvestForm.source === 'claimable' && amountNum > cb) {
-        window.alert('Montant supérieur à votre solde de gains réinvestissables');
+        notify.error('Montant supérieur à votre solde de gains réinvestissables');
         setReinvestLoading(false);
         return;
       }
       if (reinvestForm.source === 'claimable_bonus' && amountNum > cbb) {
-        window.alert('Montant supérieur à votre solde de gains bonus réinvestissables');
+        notify.error('Montant supérieur à votre solde de gains bonus réinvestissables');
         setReinvestLoading(false);
         return;
       }
       const chosen = normalizedPackages.find((p: any) => p.id === pkgId);
       if (chosen) {
         if (reinvestForm.source === 'claimable_bonus' && !chosen.is_discovery_bonus) {
-          window.alert('Les gains bonus ne peuvent être réinvestis que dans le package Discovery');
+          notify.error('Les gains bonus ne peuvent être réinvestis que dans le package Discovery');
           setReinvestLoading(false);
           return;
         }
         if (amountNum < chosen.min_amount) {
-          window.alert(`Le montant doit être ≥ ${formatCurrency(chosen.min_amount)} Pi`);
+          notify.error(`Le montant doit être ≥ ${formatCurrency(chosen.min_amount)} Pi`);
           setReinvestLoading(false);
           return;
         }
         if (chosen.max_amount && amountNum > chosen.max_amount) {
-          window.alert(`Le montant doit être ≤ ${formatCurrency(chosen.max_amount)} Pi`);
+          notify.error(`Le montant doit être ≤ ${formatCurrency(chosen.max_amount)} Pi`);
           setReinvestLoading(false);
           return;
         }
@@ -378,139 +369,176 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
       const res = await stakingService.reinvest(String(pkgId), amountNum, reinvestForm.source);
       if (!res.success) {
-        window.alert(res.message || 'Échec du réinvestissement');
+        notify.error(res.message || 'Échec du réinvestissement');
       } else {
-        window.alert('Réinvestissement effectué avec succès');
+        notify.success('Réinvestissement effectué avec succès');
         setReinvestForm({ ...reinvestForm, amount: '' });
         await refreshAllData();
         await refreshUser();
       }
     } catch (e) {
       console.error(e);
-      window.alert('Erreur lors du réinvestissement');
+      notify.error('Erreur lors du réinvestissement');
     } finally {
       setReinvestLoading(false);
     }
   };
 
+  const navItems: { key: string; label: string; icon: React.ReactNode }[] = [
+    { key: 'overview', label: "Vue d'ensemble", icon: <BarChart3 className="h-4 w-4" /> },
+    { key: 'staking', label: 'Staking', icon: <Target className="h-4 w-4" /> },
+    { key: 'investments', label: 'Investissements', icon: <Coins className="h-4 w-4" /> },
+    { key: 'claims', label: 'Réclamations', icon: <Gift className="h-4 w-4" /> },
+    { key: 'referrals', label: 'Parrainage', icon: <Users className="h-4 w-4" /> },
+    { key: 'transactions', label: 'Transactions', icon: <History className="h-4 w-4" /> },
+    { key: 'security', label: 'Sécurité', icon: <Shield className="h-4 w-4" /> },
+    { key: 'profile', label: 'Profil', icon: <Settings className="h-4 w-4" /> },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 relative">
       <ParticleBackground />
-      
-      {/* Header Amélioré */}
-      <header className="relative z-10 border-b border-border/50 bg-card/80 backdrop-blur-md">
-        <div className="container mx-auto flex h-20 items-center justify-between px-4">
-          <div className="flex items-center space-x-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full pi-gradient animate-pi-pulse">
-              <span className="text-xl font-bold text-white">Pi</span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Pi Staking Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Bienvenue, {user?.username}</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-6">
-            {/* Balance avec toggle */}
-            <div className="text-right">
+
+      <Navbar
+        onMenuClick={() => setMobileOpen(true)}
+        title="Pi Staking Dashboard"
+        subtitle={user?.username ? `Bienvenue, ${user.username}` : undefined}
+        right={
+          <div className="flex items-center space-x-4 md:space-x-6">
+            <div className="text-right max-[360px]:hidden">
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-sm text-muted-foreground">Solde Total</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowBalance(!showBalance)}
-                  className="h-4 w-4 p-0"
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowBalance(!showBalance)} className="h-4 w-4 p-0">
                   {showBalance ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </Button>
               </div>
-              <p className="text-2xl font-bold text-pi-primary">
+              <p className="text-xl md:text-2xl font-bold text-pi-primary whitespace-nowrap">
                 {showBalance ? `${formatCurrency(Number(user?.balance_pi ?? 0))} Pi` : '****'}
               </p>
             </div>
 
-            {/* Notifications */}
             <div className="relative">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" aria-label="Notifications">
                 <Bell className="h-5 w-5" />
                 {notifications?.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 px-1 min-w-[1.2rem] h-5 text-xs bg-red-500">
-                    {notifications.length}
-                  </Badge>
+                  <Badge className="absolute -top-1 -right-1 px-1 min-w-[1.2rem] h-5 text-xs bg-red-500">{notifications.length}</Badge>
                 )}
               </Button>
             </div>
 
-            {/* Niveau utilisateur */}
-            <Badge variant="outline" className="bg-pi-gold text-white border-0 px-3 py-1">
+            <Badge variant="outline" className="bg-pi-gold text-white border-0 px-3 py-1 whitespace-nowrap"> 
               <Star className="h-3 w-3 mr-1" />
               NIVEAU OR
             </Badge>
 
-            {/* Logout */}
-            <Button variant="ghost" size="sm" onClick={onLogout}>
+            <Button variant="ghost" size="sm" onClick={onLogout} aria-label="Se déconnecter">
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
-      {/* Navigation Améliorée */}
-      <div className="relative z-10 border-b border-border/50 bg-card/60 backdrop-blur-sm">
+      {/* Mobile Drawer */}
+      <Drawer open={mobileOpen} onOpenChange={setMobileOpen} direction="left">
+        <DrawerContent className="w-[85vw] max-w-sm">
+          <DrawerHeader className="flex items-center justify-between">
+            <DrawerTitle>Navigation</DrawerTitle>
+            <DrawerClose asChild>
+              <Button variant="ghost" size="sm" aria-label="Fermer le menu">Fermer</Button>
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="px-4 pb-4">
+            <nav className="flex flex-col gap-1">
+              {navItems.map((item) => (
+                <Button
+                  key={item.key}
+                  variant={activeTab === item.key ? 'secondary' : 'ghost'}
+                  className="justify-start gap-3 w-full whitespace-nowrap text-ellipsis overflow-hidden"
+                  onClick={() => {
+                    setActiveTab(item.key);
+                    setMobileOpen(false);
+                  }}
+                  aria-current={activeTab === item.key ? 'page' : undefined}
+                >
+                  {item.icon}
+                  <span className="text-sm max-[360px]:text-xs">{item.label}</span>
+                </Button>
+              ))}
+              <Separator className="my-2" />
+              <Button variant="ghost" className="justify-start gap-3" onClick={onLogout}>
+                <LogOut className="h-4 w-4" /> Se déconnecter
+              </Button>
+            </nav>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Desktop Navigation */}
+      <div className="relative z-10 border-b border-border/50 bg-card/60 backdrop-blur-sm hidden md:block">
         <div className="container mx-auto px-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-8 h-14">
-              <TabsTrigger value="overview" className="flex flex-col items-center gap-1 text-xs">
-                <BarChart3 className="h-4 w-4" />
-                Vue d'ensemble
+              <TabsTrigger value="overview" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <BarChart3 className="h-4 w-4" /> Vue d'ensemble
               </TabsTrigger>
-              <TabsTrigger value="staking" className="flex flex-col items-center gap-1 text-xs">
-                <Target className="h-4 w-4" />
-                Staking
+              <TabsTrigger value="staking" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Target className="h-4 w-4" /> Staking
               </TabsTrigger>
-              <TabsTrigger value="investments" className="flex flex-col items-center gap-1 text-xs">
-                <Coins className="h-4 w-4" />
-                Investissements
+              <TabsTrigger value="investments" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Coins className="h-4 w-4" /> Investissements
               </TabsTrigger>
-              <TabsTrigger value="claims" className="flex flex-col items-center gap-1 text-xs">
-                <Gift className="h-4 w-4" />
-                Réclamations
+              <TabsTrigger value="claims" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Gift className="h-4 w-4" /> Réclamations
               </TabsTrigger>
-              <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 text-xs">
-                <Users className="h-4 w-4" />
-                Parrainage
+              <TabsTrigger value="referrals" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Users className="h-4 w-4" /> Parrainage
               </TabsTrigger>
-              <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 text-xs">
-                <History className="h-4 w-4" />
-                Transactions
+              <TabsTrigger value="transactions" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <History className="h-4 w-4" /> Transactions
               </TabsTrigger>
-              <TabsTrigger value="security" className="flex flex-col items-center gap-1 text-xs">
-                <Shield className="h-4 w-4" />
-                Sécurité
+              <TabsTrigger value="security" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Shield className="h-4 w-4" /> Sécurité
               </TabsTrigger>
-              <TabsTrigger value="profile" className="flex flex-col items-center gap-1 text-xs">
-                <Settings className="h-4 w-4" />
-                Profil
+              <TabsTrigger value="profile" className="flex flex-col items-center gap-1 text-xs whitespace-nowrap">
+                <Settings className="h-4 w-4" /> Profil
               </TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
       </div>
 
-      {/* Contenu Principal */}
-      <main className="relative z-10 container mx-auto p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      {/* Main Content */}
+      <main className="relative z-10 container mx-auto p-4 md:p-6">
+        {!checkEmailVerified() && (
+          <div className="mb-4">
+            <EmailVerificationBanner email={user?.email} />
+          </div>
+        )}
 
-          {/* Vue d'ensemble */}
+        {(stakingLoading || dashboardLoading) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <GlowCard key={i}>
+                <CardHeader className="pb-2">
+                  <Skeleton className="h-4 w-32" />
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <Skeleton className="h-7 w-24" />
+                  <Skeleton className="h-4 w-40" />
+                </CardContent>
+              </GlowCard>
+            ))}
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Bandeau d'incitation pour bonus non réclamé */}
             {!welcomeBonusClaimed && (
               <Alert>
                 <Gift className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between w-full">
-                  <span>
-                    Vous avez un bonus de bienvenue à réclamer pour découvrir le package "Discovery".
-                  </span>
+                  <span>Vous avez un bonus de bienvenue à réclamer pour découvrir le package "Discovery".</span>
                   <Button size="sm" className="ml-4" onClick={handleClaimWelcome}>
                     Réclamer maintenant
                   </Button>
@@ -518,7 +546,6 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </Alert>
             )}
 
-            {/* Stats Rapides */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <GlowCard>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -526,12 +553,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <Wallet className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-pi-primary">
-                    {formatCurrency(calculatedTotalInvested)} Pi
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    +{investments?.length || 0} investissements
-                  </p>
+                  <div className="text-2xl font-bold text-pi-primary">{formatCurrency(calculatedTotalInvested)} Pi</div>
+                  <p className="text-xs text-muted-foreground">+{investments?.length || 0} investissements</p>
                 </CardContent>
               </GlowCard>
 
@@ -542,7 +565,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {formatCurrency(Number((user as any)?.balance_pi || 0) - Number((user as any)?.pending_withdrawal || 0))} Pi
+                    {formatCurrency(Number(user?.balance_pi || 0) - Number(user?.pending_withdrawal || 0))} Pi
                   </div>
                   <p className="text-xs text-muted-foreground">Après réservations de retraits</p>
                 </CardContent>
@@ -554,9 +577,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <TrendingUp className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(Number((user as any)?.claimable_balance || 0))} Pi
-                  </div>
+                  <div className="text-2xl font-bold text-green-600">{formatCurrency(Number(user?.claimable_balance || 0))} Pi</div>
                   <p className="text-xs text-muted-foreground">Réinvestissable dans n'importe quel package</p>
                 </CardContent>
               </GlowCard>
@@ -567,15 +588,12 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <Gift className="h-4 w-4 text-pi-gold" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-pi-gold">
-                    {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} Pi
-                  </div>
+                  <div className="text-2xl font-bold text-pi-gold">{formatCurrency(Number(user?.claimable_bonus_balance || 0))} Pi</div>
                   <p className="text-xs text-muted-foreground">Réinvestissable seulement dans Discovery</p>
                 </CardContent>
               </GlowCard>
             </div>
 
-            {/* État du bonus */}
             {welcomeBonusClaimed && (
               <GlowCard className={bonusUrgent ? 'ring-1 ring-red-500/40' : ''}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -587,9 +605,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                     <div>
                       <p className="text-sm text-muted-foreground">Disponible</p>
-                      <p className="text-xl font-bold">
-                        {formatCurrency(Number((user as any)?.bonus_balance ?? 0))} Pi
-                      </p>
+                      <p className="text-xl font-bold">{formatCurrency(Number(user?.bonus_balance ?? 0))} Pi</p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Expiration</p>
@@ -599,9 +615,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Compte à rebours</p>
-                      <p className={`text-xl font-bold ${bonusUrgent ? 'text-red-600' : ''}`}>
-                        {bonusCountdown || '—'}
-                      </p>
+                      <p className={`text-xl font-bold ${bonusUrgent ? 'text-red-600' : ''}`}>{bonusCountdown || '—'}</p>
                     </div>
                     <div className="text-right">
                       <Badge className={bonusUrgent ? 'bg-red-500/10 text-red-600' : ''} variant={welcomeBonusReinvested ? 'default' : 'secondary'}>
@@ -613,7 +627,6 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </GlowCard>
             )}
 
-            {/* Réinvestissement depuis gains */}
             <GlowCard>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -624,35 +637,24 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <Label>Source</Label>
-                    <select
-                      className="w-full border rounded-md h-10 px-2 bg-background"
-                      value={reinvestForm.source}
-                      onChange={(e) => setReinvestForm({ ...reinvestForm, source: e.target.value as any, packageId: '' })}
-                    >
+                    <select className="w-full border rounded-md h-10 px-2 bg-background" value={reinvestForm.source} onChange={(e) => setReinvestForm({ ...reinvestForm, source: e.target.value as any, packageId: '' })}>
                       <option value="claimable">Gains</option>
                       <option value="claimable_bonus">Gains bonus (Discovery)</option>
                     </select>
                   </div>
                   <div>
                     <Label>Package</Label>
-                    <select
-                      className="w-full border rounded-md h-10 px-2 bg-background"
-                      value={reinvestForm.packageId}
-                      onChange={(e) => setReinvestForm({ ...reinvestForm, packageId: e.target.value })}
-                    >
+                    <select className="w-full border rounded-md h-10 px-2 bg-background" value={reinvestForm.packageId} onChange={(e) => setReinvestForm({ ...reinvestForm, packageId: e.target.value })}>
                       {(reinvestForm.source === 'claimable' ? regularPackages : discoveryPackages).map((p: any) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <Label>Montant (Pi)</Label>
-                    <Input
-                      type="number"
-                      placeholder="0.00"
-                      value={reinvestForm.amount}
-                      onChange={(e) => setReinvestForm({ ...reinvestForm, amount: e.target.value })}
-                    />
+                    <Input type="number" placeholder="0.00" value={reinvestForm.amount} onChange={(e) => setReinvestForm({ ...reinvestForm, amount: e.target.value })} />
                   </div>
                 </div>
                 <div className="flex justify-end">
@@ -661,28 +663,21 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Solde gains: {formatCurrency(Number((user as any)?.claimable_balance || 0))} Pi • Gains bonus: {formatCurrency(Number((user as any)?.claimable_bonus_balance || 0))} Pi • Réservé: {formatCurrency(Number((user as any)?.pending_withdrawal || 0))} Pi
+                  Solde gains: {formatCurrency(Number(user?.claimable_balance || 0))} Pi • Gains bonus: {formatCurrency(Number(user?.claimable_bonus_balance || 0))} Pi • Réservé: {formatCurrency(Number(user?.pending_withdrawal || 0))} Pi
                 </p>
               </CardContent>
             </GlowCard>
 
-            {/* Actions Rapides */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button 
-                onClick={() => setActiveTab('staking')} 
-                className="h-16 pi-gradient text-white hover:pi-gradient-hover"
-              >
+              <Button onClick={() => setActiveTab('staking')} className="h-16 pi-gradient text-white hover:pi-gradient-hover">
                 <div className="flex flex-col items-center gap-2">
                   <Plus className="h-5 w-5" />
                   <span>Nouvel Investissement</span>
                 </div>
               </Button>
 
-              {(user as any)?.welcome_bonus_claimed && !(user as any)?.welcome_bonus_reinvested && (
-                <Button 
-                  onClick={handleReinvestBonus}
-                  className="h-16 bg-green-600 hover:bg-green-700 text-white"
-                >
+              {user?.welcome_bonus_claimed && !user?.welcome_bonus_reinvested && (
+                <Button onClick={handleReinvestBonus} className="h-16 bg-green-600 hover:bg-green-700 text-white">
                   <div className="flex flex-col items-center gap-2">
                     <Gift className="h-5 w-5" />
                     <span>Réinvestir mon bonus</span>
@@ -690,12 +685,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 </Button>
               )}
 
-              <Button 
-                onClick={handleClaimAll}
-                disabled={!safeClaimableInvestments?.length || claimAllLoading}
-                aria-busy={claimAllLoading}
-                className="h-16 bg-pi-gold hover:bg-pi-gold/90 text-white"
-              >
+              <Button onClick={handleClaimAll} disabled={!safeClaimableInvestments?.length || claimAllLoading} aria-busy={claimAllLoading} className="h-16 bg-pi-gold hover:bg-pi-gold/90 text-white">
                 <div className="flex flex-col items-center gap-2">
                   <Gift className="h-5 w-5" />
                   <span>{claimAllLoading ? 'Réclamation...' : `Réclamer Tout (${safeClaimableInvestments?.length || 0})`}</span>
@@ -703,24 +693,24 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </Button>
 
               {(() => {
-                const cb = Number((user as any)?.claimable_balance || 0);
-                const eligible = [...regularPackages].sort((a:any,b:any)=>a.min_amount-b.min_amount).find((p:any)=> cb >= Number(p.min_amount));
+                const cb = Number(user?.claimable_balance || 0);
+                const eligible = [...regularPackages].sort((a: any, b: any) => a.min_amount - b.min_amount).find((p: any) => cb >= Number(p.min_amount));
                 return (
-                  <Button 
+                  <Button
                     onClick={async () => {
                       try {
                         setReinvestQuickLoading(true);
                         const res = await stakingService.reinvestQuick();
                         if (!res.success) {
-                          window.alert(res.message || 'Échec du réinvestissement rapide');
+                          notify.error(res.message || 'Échec du réinvestissement rapide');
                         } else {
-                          window.alert(`Réinvestissement rapide: ${formatCurrency(res.data?.reinvested_amount || 0)} Pi`);
+                          notify.success(`Réinvestissement rapide: ${formatCurrency(res.data?.reinvested_amount || 0)} Pi`);
                         }
                         await refreshAllData();
                         await refreshUser();
                       } catch (e) {
                         console.error(e);
-                        window.alert('Erreur lors du réinvestissement rapide');
+                        notify.error('Erreur lors du réinvestissement rapide');
                       } finally {
                         setReinvestQuickLoading(false);
                       }
@@ -738,11 +728,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                 );
               })()}
 
-              <Button 
-                onClick={() => setShowWithdrawModal(true)}
-                variant="outline" 
-                className="h-16"
-              >
+              <Button onClick={() => setShowWithdrawModal(true)} variant="outline" className="h-16">
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-5 w-5" />
                   <span>Retirer des Pi</span>
@@ -750,42 +736,34 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               </Button>
             </div>
 
-            {/* Activité Récente */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Activité Récente
+                    <Activity className="h-5 w-5" /> Activité Récente
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {transactionHistory.slice(0, 5).map((transaction, index) => (
                     <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          transaction.type === 'claim' ? 'bg-green-500/20 text-green-500' :
-                          transaction.type === 'investment' ? 'bg-blue-500/20 text-blue-500' :
-                          'bg-orange-500/20 text-orange-500'
-                        }`}>
+                        <div
+                          className={`p-2 rounded-full ${transaction.type === 'claim' ? 'bg-green-500/20 text-green-500' : transaction.type === 'investment' ? 'bg-blue-500/20 text-blue-500' : 'bg-orange-500/20 text-orange-500'}`}
+                        >
                           {transaction.type === 'claim' && <Download className="h-4 w-4" />}
                           {transaction.type === 'investment' && <Target className="h-4 w-4" />}
                           {transaction.type === 'withdrawal' && <Upload className="h-4 w-4" />}
                         </div>
                         <div>
                           <p className="font-medium capitalize">{transaction.type}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(transaction.created_at)}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{formatDate(transaction.created_at)}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi
+                        <p className="font-medium">{transaction.amount > 0 ? '+' : ''}
+                          {formatCurrency(transaction.amount)} Pi
                         </p>
-                        <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>
-                          {transaction.status}
-                        </Badge>
+                        <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'}>{transaction.status}</Badge>
                       </div>
                     </div>
                   ))}
@@ -795,25 +773,22 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <PieChart className="h-5 w-5" />
-                    Répartition des Investissements
+                    <PieChart className="h-5 w-5" /> Répartition des Investissements
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {investments ? (
                     <div className="space-y-4">
                       {normalizedPackages.map((pkg: any) => {
-                        const pkgInvestments = investments.filter(inv => inv.package?.id === pkg.id);
-                        const pkgTotal = pkgInvestments.reduce((sum, inv) => sum + inv.amount, 0);
+                        const pkgInvestments = investments.filter((inv: any) => inv.package?.id === pkg.id);
+                        const pkgTotal = pkgInvestments.reduce((sum: number, inv: any) => sum + inv.amount, 0);
                         const percentage = calculatedTotalInvested > 0 ? (pkgTotal / calculatedTotalInvested) * 100 : 0;
                         if (percentage === 0) return null;
                         return (
                           <div key={pkg.id} className="space-y-2">
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium">{pkg.name}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {formatCurrency(pkgTotal)} Pi ({percentage.toFixed(1)}%)
-                              </span>
+                              <span className="text-sm text-muted-foreground">{formatCurrency(pkgTotal)} Pi ({percentage.toFixed(1)}%)</span>
                             </div>
                             <Progress value={percentage} className="h-2" />
                           </div>
@@ -828,7 +803,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </div>
           </TabsContent>
 
-          {/* Tab Staking */}
+          {/* Staking */}
           <TabsContent value="staking" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Packages de Staking</h2>
@@ -837,13 +812,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   Faire un dépôt
                 </Button>
                 <Button onClick={() => refreshAllData()} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualiser
+                  <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
                 </Button>
               </div>
             </div>
 
-            {/* Packages disponibles */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {normalizedPackages.map((pkg: any) => (
                 <GlowCard key={pkg.id} className="cursor-pointer hover:scale-105 transition-transform">
@@ -851,9 +824,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-xl">{pkg.name}</CardTitle>
-                        <Badge variant="outline" className="mt-2">
-                          {(pkg.daily_rate * 365).toFixed(2)}% APY
-                        </Badge>
+                        <Badge variant="outline" className="mt-2">{(pkg.daily_rate * 365).toFixed(2)}% APY</Badge>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">Minimum</p>
@@ -863,7 +834,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-muted-foreground">{pkg.description}</p>
-                    
+
                     <div className="space-y-2">
                       <div className="flex justify-between">
                         <span>Durée:</span>
@@ -875,13 +846,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       </div>
                       <div className="flex justify-between">
                         <span>Maximum:</span>
-                        <span className="font-medium">
-                          {pkg.max_amount ? `${formatCurrency(pkg.max_amount)} Pi` : 'Illimité'}
-                        </span>
+                        <span className="font-medium">{pkg.max_amount ? `${formatCurrency(pkg.max_amount)} Pi` : 'Illimité'}</span>
                       </div>
                     </div>
 
-                    <Button 
+                    <Button
                       onClick={() => {
                         setSelectedPackage(pkg as any);
                         setInvestmentForm({ ...investmentForm, staking_package_id: pkg.id });
@@ -889,8 +858,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                       }}
                       className="w-full pi-gradient text-white hover:pi-gradient-hover"
                     >
-                      <Target className="h-4 w-4 mr-2" />
-                      Investir
+                      <Target className="h-4 w-4 mr-2" /> Investir
                     </Button>
                   </CardContent>
                 </GlowCard>
@@ -898,7 +866,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </div>
           </TabsContent>
 
-          {/* Tab Investissements */}
+          {/* Investments */}
           <TabsContent value="investments" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Mes Investissements</h2>
@@ -907,13 +875,11 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   Faire un dépôt
                 </Button>
                 <Button onClick={() => refreshAllData()} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualiser
+                  <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
                 </Button>
               </div>
             </div>
 
-            {/* Investissements actifs */}
             <div className="space-y-4">
               {safeInvestments.map((investment) => (
                 <GlowCard key={investment.id}>
@@ -921,23 +887,19 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
                       <div>
                         <h3 className="font-semibold text-lg">{investment.package?.name || 'Package inconnu'}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Démarré le {formatDate(investment.created_at)}
-                        </p>
+                        <p className="text-sm text-muted-foreground">Démarré le {formatDate(investment.created_at)}</p>
                       </div>
-                      
+
                       <div className="text-center">
                         <p className="text-2xl font-bold">{formatCurrency(investment.amount)} Pi</p>
                         <p className="text-sm text-muted-foreground">Investi</p>
                       </div>
-                      
+
                       <div className="text-center">
-                        <p className="text-2xl font-bold text-green-600">
-                          +{formatCurrency(investment.total_earned || 0)} Pi
-                        </p>
+                        <p className="text-2xl font-bold text-green-600">+{formatCurrency(investment.total_earned || 0)} Pi</p>
                         <p className="text-sm text-muted-foreground">Gagné</p>
                       </div>
-                      
+
                       <div className="text-center">
                         <div className="space-y-2">
                           {(() => {
@@ -945,13 +907,8 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                             const maxDays = investment.package?.duration_days || 365;
                             return (
                               <>
-                                <Progress 
-                                  value={(daysElapsed / maxDays) * 100} 
-                                  className="h-2" 
-                                />
-                                <p className="text-sm text-muted-foreground">
-                                  {daysElapsed}/{maxDays} jours
-                                </p>
+                                <Progress value={(daysElapsed / maxDays) * 100} className="h-2" />
+                                <p className="text-sm text-muted-foreground">{daysElapsed}/{maxDays} jours</p>
                               </>
                             );
                           })()}
@@ -963,25 +920,17 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
 
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-4">
-                        <Badge variant={investment.status === 'active' ? 'default' : 'secondary'}>
-                          {investment.status}
-                        </Badge>
+                        <Badge variant={investment.status === 'active' ? 'default' : 'secondary'}>{investment.status}</Badge>
                         {investment.next_claim_at && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Clock className="h-4 w-4" />
-                            Prochain claim: {formatDate(investment.next_claim_at)}
+                            <Clock className="h-4 w-4" /> Prochain claim: {formatDate(investment.next_claim_at)}
                           </div>
                         )}
                       </div>
-                      
                       <div className="flex gap-2">
                         {investment.status === 'active' && (
-                          <Button 
-                            onClick={() => claimInvestment(investment.id.toString())}
-                            className="bg-pi-gold hover:bg-pi-gold/90 text-white"
-                          >
-                            <Gift className="h-4 w-4 mr-2" />
-                            Réclamer
+                          <Button onClick={() => claimInvestment(investment.id.toString())} className="bg-pi-gold hover:bg-pi-gold/90 text-white">
+                            <Gift className="h-4 w-4 mr-2" /> Réclamer
                           </Button>
                         )}
                       </div>
@@ -995,15 +944,9 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <CardContent className="text-center py-12">
                     <Target className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-xl font-semibold mb-2">Aucun investissement</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Commencez votre premier investissement pour générer des revenus passifs.
-                    </p>
-                    <Button 
-                      onClick={() => setActiveTab('staking')}
-                      className="pi-gradient text-white hover:pi-gradient-hover"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Premier Investissement
+                    <p className="text-muted-foreground mb-4">Commencez votre premier investissement pour générer des revenus passifs.</p>
+                    <Button onClick={() => setActiveTab('staking')} className="pi-gradient text-white hover:pi-gradient-hover">
+                      <Plus className="h-4 w-4 mr-2" /> Premier Investissement
                     </Button>
                   </CardContent>
                 </GlowCard>
@@ -1011,25 +954,18 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </div>
           </TabsContent>
 
-          {/* Tab Réclamations */}
+          {/* Claims */}
           <TabsContent value="claims" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Réclamations</h2>
               <div className="flex gap-2">
                 {totalClaimable > 0 && (
-                  <Button 
-                    onClick={handleClaimAll}
-                    className="bg-pi-gold hover:bg-pi-gold/90 text-white"
-                    disabled={claimAllLoading}
-                    aria-busy={claimAllLoading}
-                  >
-                    <Gift className="h-4 w-4 mr-2" />
-                    {claimAllLoading ? 'Réclamation...' : `Tout Réclamer (${formatCurrency(totalClaimable)} Pi)`}
+                  <Button onClick={handleClaimAll} className="bg-pi-gold hover:bg-pi-gold/90 text-white" disabled={claimAllLoading} aria-busy={claimAllLoading}>
+                    <Gift className="h-4 w-4 mr-2" /> {claimAllLoading ? 'Réclamation...' : `Tout Réclamer (${formatCurrency(totalClaimable)} Pi)`}
                   </Button>
                 )}
                 <Button onClick={() => refreshAllData()} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualiser
+                  <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
                 </Button>
               </div>
             </div>
@@ -1038,7 +974,6 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               Min retrait: 2 Pi • Caps/jour: Bronze 20, Silver 50, Gold 100, Diamond 200 Pi • Taux journaliers approx.: Discovery 2.5%, Bronze 0.8%, Silver 0.5%, Gold 0.3%, Diamond 0.2%
             </div>
 
-            {/* Réclamations disponibles */}
             <div className="space-y-4">
               {safeClaimableInvestments.map((investment) => (
                 <GlowCard key={investment.id} className="border-pi-gold/50">
@@ -1046,27 +981,18 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="font-semibold text-lg flex items-center gap-2">
-                          <Gift className="h-5 w-5 text-pi-gold" />
-                          {investment.investment?.package?.name || 'Package inconnu'}
+                          <Gift className="h-5 w-5 text-pi-gold" /> {investment.investment?.package?.name || 'Package inconnu'}
                         </h3>
-                        <p className="text-muted-foreground">
-                          Investissement de {formatCurrency(investment.amount)} Pi
-                        </p>
+                        <p className="text-muted-foreground">Investissement de {formatCurrency(investment.amount)} Pi</p>
                       </div>
-                      
+
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-pi-gold">
-                          +{formatCurrency(investment.claimable_amount)} Pi
-                        </p>
+                        <p className="text-2xl font-bold text-pi-gold">+{formatCurrency(investment.claimable_amount)} Pi</p>
                         <p className="text-sm text-muted-foreground">À réclamer</p>
                       </div>
-                      
-                      <Button 
-                        onClick={() => claimInvestment(investment.id.toString())}
-                        className="bg-pi-gold hover:bg-pi-gold/90 text-white"
-                      >
-                        <Gift className="h-4 w-4 mr-2" />
-                        Réclamer
+
+                      <Button onClick={() => claimInvestment(investment.id.toString())} className="bg-pi-gold hover:bg-pi-gold/90 text-white">
+                        <Gift className="h-4 w-4 mr-2" /> Réclamer
                       </Button>
                     </div>
                   </CardContent>
@@ -1078,108 +1004,83 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   <CardContent className="text-center py-12">
                     <Timer className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                     <h3 className="text-xl font-semibold mb-2">Aucune réclamation disponible</h3>
-                    <p className="text-muted-foreground">
-                      Vos prochaines réclamations seront disponibles selon le calendrier de vos investissements.
-                    </p>
+                    <p className="text-muted-foreground">Vos prochaines réclamations seront disponibles selon le calendrier de vos investissements.</p>
                   </CardContent>
                 </GlowCard>
               )}
             </div>
           </TabsContent>
 
-          {/* Tab Parrainage */}
+          {/* Referrals */}
           <TabsContent value="referrals" className="space-y-6">
             <ReferralDashboard />
           </TabsContent>
 
-          {/* Tab Transactions */}
+          {/* Transactions */}
           <TabsContent value="transactions" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Historique des Transactions</h2>
               <div className="flex gap-2">
                 <Button onClick={() => setShowWithdrawModal(true)} variant="outline">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Nouveau Retrait
+                  <Upload className="h-4 w-4 mr-2" /> Nouveau Retrait
                 </Button>
                 <Button onClick={() => loadTransactionHistory()} variant="outline">
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualiser
+                  <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
                 </Button>
               </div>
             </div>
 
-            {/* Limites de retrait */}
             <GlowCard>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Limites de Retrait
+                  <DollarSign className="h-5 w-5" /> Limites de Retrait
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Limite Journalière</p>
-                    <p className="text-xl font-bold">
-                      {formatCurrency(withdrawalLimits.daily)} Pi
-                    </p>
+                    <p className="text-xl font-bold">{formatCurrency(withdrawalLimits.daily)} Pi</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Limite Mensuelle</p>
-                    <p className="text-xl font-bold">
-                      {formatCurrency(withdrawalLimits.monthly)} Pi
-                    </p>
+                    <p className="text-xl font-bold">{formatCurrency(withdrawalLimits.monthly)} Pi</p>
                   </div>
                 </div>
               </CardContent>
             </GlowCard>
 
-            {/* Liste des transactions */}
             <GlowCard>
               <CardContent className="p-6">
                 <div className="space-y-4">
                   {transactionHistory.map((transaction, index) => (
                     <div key={index} className="flex items-center justify-between p-4 rounded-lg border">
                       <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-full ${
-                          transaction.type === 'claim' ? 'bg-green-500/20 text-green-500' :
-                          transaction.type === 'investment' ? 'bg-blue-500/20 text-blue-500' :
-                          'bg-orange-500/20 text-orange-500'
-                        }`}>
+                        <div
+                          className={`p-3 rounded-full ${transaction.type === 'claim' ? 'bg-green-500/20 text-green-500' : transaction.type === 'investment' ? 'bg-blue-500/20 text-blue-500' : 'bg-orange-500/20 text-orange-500'}`}
+                        >
                           {transaction.type === 'claim' && <Download className="h-5 w-5" />}
                           {transaction.type === 'investment' && <Target className="h-5 w-5" />}
                           {transaction.type === 'withdrawal' && <Upload className="h-5 w-5" />}
                         </div>
                         <div>
                           <h4 className="font-medium capitalize">{transaction.type}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(transaction.created_at)}
-                          </p>
-                          {transaction.description && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {transaction.description}
-                            </p>
-                          )}
+                          <p className="text-sm text-muted-foreground">{formatDate(transaction.created_at)}</p>
+                          {transaction.description && <p className="text-xs text-muted-foreground mt-1">{transaction.description}</p>}
                         </div>
                       </div>
-                      
+
                       <div className="text-right">
-                        <p className="text-lg font-semibold">
-                          {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi
-                        </p>
-                        <Badge 
-                          variant={
-                            transaction.status === 'completed' ? 'default' :
-                            transaction.status === 'pending' ? 'secondary' :
-                            'destructive'
-                          }
+                        <p className="text-lg font-semibold">{transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)} Pi</p>
+                        <Badge
+                          variant={transaction.status === 'completed' ? 'default' : transaction.status === 'pending' ? 'secondary' : 'destructive'}
                         >
                           {transaction.status}
                         </Badge>
                       </div>
                     </div>
                   ))}
-                  
+
                   {!transactionHistory.length && (
                     <div className="text-center py-8">
                       <History className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1191,57 +1092,42 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </GlowCard>
           </TabsContent>
 
-          {/* Tab Sécurité */}
+          {/* Security */}
           <TabsContent value="security" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Centre de Sécurité</h2>
               <Button onClick={() => loadSecurityData()} variant="outline">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Actualiser
+                <RefreshCw className="h-4 w-4 mr-2" /> Actualiser
               </Button>
             </div>
 
-            {/* Paramètres de sécurité */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5" />
-                    Authentification à Deux Facteurs (2FA)
+                    <Shield className="h-5 w-5" /> Authentification à Deux Facteurs (2FA)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Statut 2FA</p>
-                      <p className="text-sm text-muted-foreground">
-                        {twoFactorEnabled ? 'Activée' : 'Désactivée'}
-                      </p>
+                      <p className="text-sm text-muted-foreground">{twoFactorEnabled ? 'Activée' : 'Désactivée'}</p>
                     </div>
-                    <Switch
-                      checked={twoFactorEnabled}
-                      onCheckedChange={toggle2FA}
-                    />
+                    <Switch checked={twoFactorEnabled} onCheckedChange={toggle2FA} />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">Notifications 2FA</p>
-                      <p className="text-sm text-muted-foreground">
-                        Alertes pour les connexions
-                      </p>
+                      <p className="text-sm text-muted-foreground">Alertes pour les connexions</p>
                     </div>
-                    <Switch
-                      checked={notifications2FA}
-                      onCheckedChange={setNotifications2FA}
-                    />
+                    <Switch checked={notifications2FA} onCheckedChange={setNotifications2FA} />
                   </div>
 
                   <Alert>
                     <Shield className="h-4 w-4" />
-                    <AlertDescription>
-                      L'authentification à deux facteurs ajoute une couche de sécurité supplémentaire à votre compte.
-                    </AlertDescription>
+                    <AlertDescription>L'authentification à deux facteurs ajoute une couche de sécurité supplémentaire à votre compte.</AlertDescription>
                   </Alert>
                 </CardContent>
               </GlowCard>
@@ -1249,47 +1135,36 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Lock className="h-5 w-5" />
-                    État de Sécurité
+                    <Lock className="h-5 w-5" /> État de Sécurité
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span>Mot de passe sécurisé</span>
+                      <CheckCircle className="h-5 w-5 text-green-500" /> <span>Mot de passe sécurisé</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      {twoFactorEnabled ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                      )}
+                      {twoFactorEnabled ? <CheckCircle className="h-5 w-5 text-green-500" /> : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
                       <span>Authentification 2FA</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      <span>Email vérifié</span>
+                      <CheckCircle className="h-5 w-5 text-green-500" /> <span>Email vérifié</span>
                     </div>
-                    
+
                     <div className="pt-4">
                       <p className="text-sm font-medium mb-2">Score de Sécurité</p>
                       <Progress value={twoFactorEnabled ? 95 : 75} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {twoFactorEnabled ? 'Excellent' : 'Bon - Activez la 2FA pour améliorer'}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{twoFactorEnabled ? 'Excellent' : 'Bon - Activez la 2FA pour améliorer'}</p>
                     </div>
                   </div>
                 </CardContent>
               </GlowCard>
             </div>
 
-            {/* Journal de sécurité */}
             <GlowCard>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Journal de Sécurité
+                  <Activity className="h-5 w-5" /> Journal de Sécurité
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1297,28 +1172,22 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   {securityLogs.map((log, index) => (
                     <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          log.type === 'login' ? 'bg-green-500/20 text-green-500' :
-                          log.type === 'logout' ? 'bg-gray-500/20 text-gray-500' :
-                          'bg-blue-500/20 text-blue-500'
-                        }`}>
+                        <div
+                          className={`p-2 rounded-full ${log.type === 'login' ? 'bg-green-500/20 text-green-500' : log.type === 'logout' ? 'bg-gray-500/20 text-gray-500' : 'bg-blue-500/20 text-blue-500'}`}
+                        >
                           {log.type === 'login' && <Lock className="h-4 w-4" />}
                           {log.type === 'logout' && <Unlock className="h-4 w-4" />}
                           {log.type === 'security' && <Shield className="h-4 w-4" />}
                         </div>
                         <div>
                           <p className="font-medium">{log.description}</p>
-                          <p className="text-sm text-muted-foreground">
-                            IP: {log.ip_address} • {formatDate(log.created_at)}
-                          </p>
+                          <p className="text-sm text-muted-foreground">IP: {log.ip_address} • {formatDate(log.created_at)}</p>
                         </div>
                       </div>
-                      <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
-                        {log.status}
-                      </Badge>
+                      <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>{log.status}</Badge>
                     </div>
                   ))}
-                  
+
                   {!securityLogs.length && (
                     <div className="text-center py-8">
                       <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -1330,19 +1199,17 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             </GlowCard>
           </TabsContent>
 
-          {/* Tab Profil */}
+          {/* Profile */}
           <TabsContent value="profile" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-3xl font-bold">Mon Profil</h2>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Informations personnelles */}
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Informations Personnelles
+                    <Users className="h-5 w-5" /> Informations Personnelles
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1360,19 +1227,15 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Membre depuis</Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {user?.created_at ? formatDate(user.created_at) : 'Non disponible'}
-                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">{user?.created_at ? formatDate(user.created_at) : 'Non disponible'}</p>
                   </div>
                 </CardContent>
               </GlowCard>
 
-              {/* Statistiques du compte */}
               <GlowCard>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Statistiques du Compte
+                    <Award className="h-5 w-5" /> Statistiques du Compte
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1398,9 +1261,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
                   </div>
                   <div className="flex justify-between">
                     <span>Dernière réclamation:</span>
-                    <span className="text-sm">
-                      {user?.last_claim_at ? formatDate(user.last_claim_at) : 'Jamais'}
-                    </span>
+                    <span className="text-sm">{user?.last_claim_at ? formatDate(user.last_claim_at) : 'Jamais'}</span>
                   </div>
                 </CardContent>
               </GlowCard>
@@ -1409,10 +1270,10 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
         </Tabs>
       </main>
 
-      {/* Modal de dépôt */}
+      {/* Deposit Modal */}
       <DepositModal open={showDepositModal} onOpenChange={setShowDepositModal} />
 
-      {/* Modal d'investissement */}
+      {/* Invest Modal */}
       <Dialog open={showInvestModal} onOpenChange={setShowInvestModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1422,39 +1283,25 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
             <div className="space-y-4">
               <div className="p-4 rounded-lg bg-muted/50">
                 <h3 className="font-semibold">{selectedPackage.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  APY: {(selectedPackage.daily_rate * 365).toFixed(2)}% • Durée: {selectedPackage.max_duration_days} jours
-                </p>
+                <p className="text-sm text-muted-foreground">APY: {(selectedPackage.daily_rate * 365).toFixed(2)}% • Durée: {selectedPackage.max_duration_days} jours</p>
               </div>
-              
+
               <div className="space-y-2">
                 <Label>Montant à investir (Pi)</Label>
                 <Input
                   type="number"
                   placeholder={`Minimum: ${formatCurrency(selectedPackage.min_amount)} Pi`}
                   value={investmentForm.amount}
-                  onChange={(e) => setInvestmentForm({
-                    ...investmentForm,
-                    amount: e.target.value
-                  })}
+                  onChange={(e) => setInvestmentForm({ ...investmentForm, amount: e.target.value })}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Solde disponible: {formatCurrency(Number(user?.balance_pi ?? 0))} Pi
-                </p>
+                <p className="text-xs text-muted-foreground">Solde disponible: {formatCurrency(Number(user?.balance_pi ?? 0))} Pi</p>
               </div>
-              
+
               <div className="flex gap-2 pt-4">
-                <Button 
-                  onClick={handleInvestment}
-                  disabled={!investmentForm.amount || parseFloat(investmentForm.amount) < selectedPackage.min_amount}
-                  className="flex-1 pi-gradient text-white hover:pi-gradient-hover"
-                >
+                <Button onClick={handleInvestment} disabled={!investmentForm.amount || parseFloat(investmentForm.amount) < selectedPackage.min_amount} className="flex-1 pi-gradient text-white hover:pi-gradient-hover">
                   Investir
                 </Button>
-                <Button 
-                  onClick={() => setShowInvestModal(false)} 
-                  variant="outline"
-                >
+                <Button onClick={() => setShowInvestModal(false)} variant="outline">
                   Annuler
                 </Button>
               </div>
@@ -1463,7 +1310,7 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
         </DialogContent>
       </Dialog>
 
-      {/* Modal de retrait */}
+      {/* Withdraw Modal */}
       <Dialog open={showWithdrawModal} onOpenChange={setShowWithdrawModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1472,51 +1319,34 @@ export function UserDashboardComplete({ onLogout }: UserDashboardCompleteProps) 
           <div className="space-y-4">
             <Alert>
               <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                Les retraits sont traités sous 24-48h ouvrables après vérification.
-              </AlertDescription>
+              <AlertDescription>Les retraits sont traités sous 24-48h ouvrables après vérification.</AlertDescription>
             </Alert>
-            
+
             <div className="space-y-2">
               <Label>Montant à retirer (Pi)</Label>
               <Input
                 type="number"
                 placeholder="Montant en Pi"
                 value={withdrawalForm.amount}
-                onChange={(e) => setWithdrawalForm({
-                  ...withdrawalForm,
-                  amount: e.target.value
-                })}
+                onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground">
-                Limite journalière: {formatCurrency(withdrawalLimits.daily)} Pi
-              </p>
+              <p className="text-xs text-muted-foreground">Limite journalière: {formatCurrency(withdrawalLimits.daily)} Pi</p>
             </div>
-            
+
             <div className="space-y-2">
               <Label>Adresse Pi Network</Label>
               <Input
                 placeholder="Votre adresse de portefeuille Pi"
                 value={withdrawalForm.pi_address}
-                onChange={(e) => setWithdrawalForm({
-                  ...withdrawalForm,
-                  pi_address: e.target.value
-                })}
+                onChange={(e) => setWithdrawalForm({ ...withdrawalForm, pi_address: e.target.value })}
               />
             </div>
-            
+
             <div className="flex gap-2 pt-4">
-              <Button 
-                onClick={handleWithdrawal}
-                disabled={!withdrawalForm.amount || !withdrawalForm.pi_address}
-                className="flex-1"
-              >
+              <Button onClick={handleWithdrawal} disabled={!withdrawalForm.amount || !withdrawalForm.pi_address} className="flex-1">
                 Demander le Retrait
               </Button>
-              <Button 
-                onClick={() => setShowWithdrawModal(false)} 
-                variant="outline"
-              >
+              <Button onClick={() => setShowWithdrawModal(false)} variant="outline">
                 Annuler
               </Button>
             </div>
