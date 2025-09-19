@@ -22,6 +22,8 @@ import {
   Target,
   Clock
 } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorState } from '@/components/ui/ErrorState';
 
 interface StakingPackagesProps {
   onInvestmentSuccess?: () => void;
@@ -146,9 +148,8 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
   if (isLoading) {
     return (
       <GlowCard>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin mr-4" />
-          <span>Chargement des packages de staking...</span>
+        <CardContent className="p-8">
+          <LoadingSpinner label="Chargement des packages de staking..." />
         </CardContent>
       </GlowCard>
     );
@@ -156,14 +157,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
 
   if (error && !showInvestModal) {
     return (
-      <GlowCard>
-        <CardContent className="text-center p-8">
-          <p className="text-destructive mb-4">{error}</p>
-          <Button variant="outline" onClick={fetchPackages}>
-            Réessayer
-          </Button>
-        </CardContent>
-      </GlowCard>
+      <ErrorState message={error} onRetry={fetchPackages} />
     );
   }
 
