@@ -48,37 +48,29 @@ export function EmailVerificationPage({
 
   // Vérifier l'URL pour un token de vérification
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const hash = urlParams.get('hash');
-    
-    if (token && hash && type === 'registration') {
-      handleVerifyEmail(token, hash);
+    const search = window.location.search;
+    const params = new URLSearchParams(search);
+    const hasSigned = params.has('signature') && params.has('expires') && params.has('id') && params.has('hash');
+    if (hasSigned && type === 'registration') {
+      handleVerifyByQuery(search);
     }
   }, []);
 
-  const handleVerifyEmail = async (token: string, hash: string) => {
+  const handleVerifyByQuery = async (search: string) => {
     setIsLoading(true);
     setError('');
-    
     try {
-      const result = await emailVerificationService.verifyEmail(token, hash);
-      
+      const result = await emailVerificationService.verifyFromQuery(search);
       if (result.success) {
         setMessage('Email vérifié avec succès ! Vous pouvez maintenant accéder à toutes les fonctionnalités.');
-        
-        // Actualiser les données utilisateur
         if (refreshUser) {
           await refreshUser();
         }
-        
-        // Rediriger après 2 secondes
         setTimeout(() => {
           if (onVerified) {
             onVerified();
           }
         }, 2000);
-        
       } else {
         setError(result.message);
       }

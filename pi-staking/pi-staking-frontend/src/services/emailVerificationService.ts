@@ -46,20 +46,14 @@ export class EmailVerificationService {
   async sendRegistrationVerification(email: string): Promise<EmailVerificationResponse> {
     try {
       debugLog('Envoi email vérification inscription:', email);
-      
-      const response = await apiClient.post('/auth/email/verification-notification', {
-        email
-      });
-      
+      const response = await apiClient.post('/auth/email/resend');
       return {
         success: true,
         message: 'Email de vérification envoyé avec succès',
         data: response.data
       };
-      
     } catch (error: any) {
       console.error('Erreur envoi email vérification:', error);
-      
       return {
         success: false,
         message: error.response?.data?.message || 'Erreur lors de l\'envoi de l\'email de vérification'
@@ -70,24 +64,20 @@ export class EmailVerificationService {
   /**
    * Vérifier email avec token
    */
-  async verifyEmail(token: string, hash: string): Promise<EmailVerificationResponse> {
+  async verifyFromQuery(search: string): Promise<EmailVerificationResponse> {
     try {
-      debugLog('Vérification email avec token:', { token: token.substring(0, 10) + '...' });
-      
-      const response = await apiClient.get(`/auth/email/verify/${hash}?token=${token}`);
-      
+      debugLog('Vérification email via lien signé');
+      const response = await apiClient.get(`/auth/email/verify${search}`);
       return {
         success: true,
-        message: 'Email vérifié avec succès',
+        message: response.data?.message || 'Email vérifié avec succès',
         data: response.data
       };
-      
     } catch (error: any) {
       console.error('Erreur vérification email:', error);
-      
       return {
         success: false,
-        message: error.response?.data?.message || 'Token de vérification invalide ou expiré'
+        message: error.response?.data?.message || 'Lien de vérification invalide ou expiré'
       };
     }
   }
@@ -98,24 +88,17 @@ export class EmailVerificationService {
   async resendVerification(request: ResendVerificationRequest): Promise<EmailVerificationResponse> {
     try {
       debugLog('Renvoi email vérification:', request);
-      
       const endpoint = request.type === 'registration' 
-        ? '/auth/email/verification-notification'
+        ? '/auth/email/resend'
         : '/withdrawals/resend-verification';
-        
-      const response = await apiClient.post(endpoint, {
-        email: request.email
-      });
-      
+      const response = await apiClient.post(endpoint);
       return {
         success: true,
         message: 'Email de vérification renvoyé avec succès',
         data: response.data
       };
-      
     } catch (error: any) {
       console.error('Erreur renvoi vérification:', error);
-      
       return {
         success: false,
         message: error.response?.data?.message || 'Erreur lors du renvoi de l\'email'
@@ -128,13 +111,12 @@ export class EmailVerificationService {
    */
   async checkVerificationStatus(): Promise<{ verified: boolean; email?: string }> {
     try {
-      const response = await apiClient.get('/auth/email/verification-status');
-      
+      const response = await apiClient.get('/auth/email/status');
+      const data = response.data?.data || response.data;
       return {
-        verified: response.data.email_verified_at !== null,
-        email: response.data.email
+        verified: data.email_verified_at !== null,
+        email: data.email
       };
-      
     } catch (error: any) {
       console.error('Erreur vérification statut:', error);
       return { verified: false };
