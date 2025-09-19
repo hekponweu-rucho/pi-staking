@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminReferralController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\AdminDepositController;
 use App\Http\Controllers\AdminWithdrawalController;
+use App\Http\Controllers\EmailVerificationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,9 +45,13 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+    Route::get('/email/verify', [EmailVerificationController::class, 'verify'])->name('api.auth.email.verify')->middleware('signed');
     
     // Routes protégées par authentification
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/email/resend', [EmailVerificationController::class, 'resend']);
+        Route::get('/email/status', [EmailVerificationController::class, 'status']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/refresh', [AuthController::class, 'refresh']);

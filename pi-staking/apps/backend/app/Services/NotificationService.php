@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Mail\EmailVerificationMail;
+use App\Mail\WelcomeEmail;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -301,5 +303,27 @@ class NotificationService
             ->count();
 
         return $count < $limit['count'];
+    }
+
+    public function sendEmailVerification(User $user, string $verifyUrl): bool
+    {
+        try {
+            Mail::to($user->email)->send(new EmailVerificationMail($user, $verifyUrl));
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi email vérification: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function sendWelcomeEmail(User $user): bool
+    {
+        try {
+            Mail::to($user->email)->send(new WelcomeEmail($user));
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Erreur envoi email bienvenue: ' . $e->getMessage());
+            return false;
+        }
     }
 }

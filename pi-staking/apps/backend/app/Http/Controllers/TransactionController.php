@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\WithdrawalRequest;
+use App\Models\VerificationCode;
+use App\Services\NotificationService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -123,9 +126,34 @@ class TransactionController extends Controller
             ]);
             Metrics::inc('withdrawals_requested_total');
 
+            $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            VerificationCode::create([
+                'user_id' => $user->id,
+                'method' => 'email',
+                'code' => bcrypt($code),
+                'action' => 'withdrawal',
+                'amount' => $amount,
+                'expires_at' => now()->addMinutes((int) config('security.verification.code_expiry_minutes', 5)),
+                'attempts' => 0,
+                'max_attempts' => (int) config('security.verification.max_attempts', 3),
+                'metadata' => [
+                    'withdrawal_request_id' => $withdrawalRequest->id,
+                    'ip' => $request->ip(),
+                ],
+            ]);
+
+            app(NotificationService::class)->sendWithdrawalVerificationEmail($user, $code, (float) $amount);
+
+            Log::info('Demande de retrait créée', [
+                'user_id' => $user->id,
+                'withdrawal_request_id' => $withdrawalRequest->id,
+                'amount' => (float) $amount,
+                'status' => 'pending',
+            ]);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Demande de retrait créée avec succès. Elle sera traitée sous 24-48h.',
+                'message' => 'Demande de retrait créée avec succès. Code de vérification envoyé.',
                 'data' => [
                     'withdrawal_request' => $withdrawalRequest,
                     'user' => $user->fresh(),
@@ -133,6 +161,11 @@ class TransactionController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+            Log::error('Erreur création demande de retrait', [
+                'user_id' => $user->id ?? null,
+                'amount' => $amount ?? null,
+                'error_message' => $e->getMessage(),
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la création de la demande : ' . $e->getMessage()

@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
+use App\Services\NotificationService;
 
 class AuthController extends Controller
 {
@@ -205,6 +208,117 @@ class AuthController extends Controller
                 'bonus_balance' => (float) $user->fresh()->bonus_balance,
                 'user' => $user->fresh(),
             ],
+        ]);
+    }
+
+    public function register(Request $request, NotificationService $notifications): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string|max:255|unique:users,username',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|min:8|confirmed',
+            'referral_code' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreurs de validation',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $data = $validator->validated();
+
+        $user = User::create([
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'current_level' => 'bronze',
+        ]);
+
+        if (method_exists($user, 'assignRole')) {
+            $user->assignRole('user');
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        $bonusGrant = null;
+        $bonusAmount = (float) config('staking.bonus.discovery_amount', 50);
+        $bonusExpires = now()->addDays((int) config('staking.bonus.expiration_days', 90));
+        $bonusGrant = BonusGrant::create([
+            'user_id' => $user->id,
+            'type' => 'welcome',
+            'amount' => $bonusAmount,
+            'expires_at' => $bonusExpires,
+            'is_used' => false,
+            'description' => 'Bonus de bienvenue',
+        ]);
+
+        $shouldVerify = filter_var(env('ENABLE_EMAIL_VERIFICATION', true), FILTER_VALIDATE_BOOL);
+        if ($shouldVerify) {
+            $minutes = (int) (config('auth.verification.expire', 60 * 24));
+            $verifyUrl = URL::temporarySignedRoute(
+                'api.auth.email.verify',
+                now()->addMinutes($minutes),
+                [
+                    'id' => $user->id,
+                    'hash' => sha1($user->email),
+                ]
+            );
+            $notifications->sendEmailVerification($user, $verifyUrl);
+        } else {
+            $user->forceFill(['email_verified_at' => now()])->save();
+            $notifications->sendWelcomeEmail($user);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Inscription réussie.',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+                'bonus_grant' => $bonusGrant,
+            ]
+        ], 201);
+    }
+
+    public function logout(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if ($user && $user->currentAccessToken()) {
+            $user->currentAccessToken()->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Déconnexion réussie.'
+        ]);
+    }
+
+    public function refresh(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non authentifié.'
+            ], 401);
+        }
+
+        if ($user->currentAccessToken()) {
+            $user->currentAccessToken()->delete();
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Token renouvelé.',
+            'data' => [
+                'user' => $user->fresh(),
+                'token' => $token,
+            ]
         ]);
     }
 }
