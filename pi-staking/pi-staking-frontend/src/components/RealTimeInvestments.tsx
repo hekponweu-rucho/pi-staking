@@ -22,15 +22,17 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
     try {
       setError(null);
       const response = await stakingService.getUserInvestments();
-      
       if (response.success && response.data) {
         setInvestments(response.data);
+        console.info('investments_loaded', { count: response.data.length });
       } else {
         setError(response.message || 'Erreur lors du chargement des investments');
+        console.info('investments_error', { message: response.message });
       }
     } catch (err) {
       setError('Erreur de connexion au serveur');
       console.error('Investments fetch error:', err);
+      console.info('investments_error', { message: 'network_error' });
     } finally {
       setIsLoading(false);
     }
@@ -154,7 +156,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
   const activeInvestments = investments.filter(inv => inv.status === 'active');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="realtime-investments">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -209,7 +211,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
           <CardTitle>Détail de vos Investments</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table data-testid="realtime-investments-table">
             <TableHeader>
               <TableRow>
                 <TableHead>Package</TableHead>
@@ -250,7 +252,7 @@ export function RealTimeInvestments({ refreshTrigger }: RealTimeInvestmentsProps
                       </div>
                     </TableCell>
                     <TableCell className="text-green-600">
-                      {investment.claimed_amount.toFixed(2)} Pi
+                      {Number(investment.total_claimed || 0).toFixed(2)} Pi
                     </TableCell>
                     <TableCell>
                       {investment.next_claim_at ? (

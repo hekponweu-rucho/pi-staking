@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,13 +57,14 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
     try {
       setIsLoading(true);
       setError(null);
-      
       const response = await stakingService.getPackages();
-      
       if (response.success && response.data) {
-        setPackages(response.data.filter(pkg => pkg.is_active));
+        const active = response.data.filter(pkg => pkg.is_active);
+        setPackages(active);
+        console.info('packages_loaded', { count: active.length });
       } else {
         setError(response.message || 'Erreur lors du chargement des packages');
+        console.info('packages_loaded', { error: response.message });
       }
     } catch (err) {
       setError('Erreur de connexion au serveur');
@@ -73,6 +75,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
   };
 
   const handleSelectPackage = (pkg: StakingPackage) => {
+    console.info('invest_clicked', { package_id: pkg.id });
     setInvestment({
       step: 1,
       selectedPackage: pkg,
@@ -92,23 +95,31 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
     setInvestment(prev => ({ ...prev, isLoading: true }));
 
     try {
-      const source = investment.selectedPackage.level === 'discovery' ? 'bonus' : 'funds';
       const response = await stakingService.createInvestment(
-        investment.selectedPackage.id,
+        String(investment.selectedPackage.id),
         investment.amount,
-        source
+        'funds'
       );
 
       if (response.success) {
+        console.info('invest_success', { investment_amount: investment.amount, package_id: investment.selectedPackage.id });
+        toast.success("Investissement créé avec succès");
         setInvestment(prev => ({ ...prev, step: 3, isLoading: false }));
         await refreshUser();
         onInvestmentSuccess?.();
       } else {
-        setError(response.message || 'Erreur lors de l\'investissement');
+        const msg = response.message || "Erreur lors de l'investissement";
+        console.info('invest_error', { message: msg });
+        toast.error(msg);
+        setError(msg);
         setInvestment(prev => ({ ...prev, isLoading: false }));
       }
-    } catch (err) {
-      setError('Erreur de connexion au serveur');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Erreur de connexion au serveur';
+      console.error('Invest error:', err);
+      console.info('invest_error', { message: msg });
+      toast.error(msg);
+      setError(msg);
       setInvestment(prev => ({ ...prev, isLoading: false }));
     }
   };
@@ -156,7 +167,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="staking-packages">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold mb-2">Packages de Staking Disponibles</h2>
@@ -164,104 +175,118 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
             Choisissez le package qui correspond à votre profil d'investissement et commencez à gagner des récompenses quotidiennes.
           </p>
         </div>
-        <Button onClick={() => setShowDepositModal(true)} className="pi-gradient text-white hover:pi-gradient-hover">
+        <Button onClick={() => setShowDepositModal(true)} className="pi-gradient text-white hover:pi-gradient-hover" data-testid="deposit-open-btn">
           Faire un dépôt
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {packages.map(pkg => {
-          const minReturns = calculateReturns(pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);
-          const maxReturns = calculateReturns(pkg.max_amount || pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);
+      {packages.length === 0 ? (
+        <GlowCard data-testid="packages-empty">
+          <CardHeader>
+            <CardTitle>Aucun package actif</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center">
+            <p className="text-muted-foreground mb-4">Aucun package n'est disponible pour le moment. Revenez plus tard ou réessayez.</p>
+            <Button variant="outline" onClick={fetchPackages} data-testid="packages-retry-btn">Réessayer</Button>
+          </CardContent>
+        </GlowCard>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="packages-grid">
+          {packages.map(pkg => {
+            const minReturns = calculateReturns(pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);
+            const maxReturns = calculateReturns(pkg.max_amount || pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);
 
-          return (
-            <GlowCard key={pkg.id} className="relative overflow-hidden">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{pkg.name}</CardTitle>
-                  <Badge className="pi-gradient text-white">
-                    {(pkg.daily_rate * 100).toFixed(2)}%/jour
-                  </Badge>
-                </div>
-                {pkg.description && (
-                  <p className="text-sm text-muted-foreground">{pkg.description}</p>
-                )}
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {/* Package Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Minimum</p>
-                    <p className="font-semibold">{pkg.min_amount.toLocaleString()}  Pi</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Maximum</p>
-                    <p className="font-semibold">
-                      {pkg.max_amount ? `${pkg.max_amount.toLocaleString()}  Pi` : 'Illimité'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Durée max</p>
-                    <p className="font-semibold flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {pkg.max_duration_days} jours
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Niveau requis</p>
-                    <Badge variant="outline" className="text-xs">
-                      {pkg.level}
+            return (
+              <GlowCard key={pkg.id} className="relative overflow-hidden" data-testid={`package-card-${pkg.id}`}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{pkg.name}</CardTitle>
+                    <Badge className="pi-gradient text-white">
+                      {(pkg.daily_rate * 100).toFixed(2)}%/jour
                     </Badge>
                   </div>
-                </div>
-
-                {/* Returns Preview */}
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Retour quotidien min:</span>
-                    <span className="font-medium text-green-600">
-                      {minReturns.dailyReturn.toFixed(2)}  Pi
-                    </span>
+                  {pkg.description && (
+                    <p className="text-sm text-muted-foreground">{pkg.description}</p>
+                  )}
+                </CardHeader>
+                
+                <CardContent className="space-y-4">
+                  {/* Package Info */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Minimum</p>
+                      <p className="font-semibold">{pkg.min_amount.toLocaleString()}  Pi</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Maximum</p>
+                      <p className="font-semibold">
+                        {pkg.max_amount ? `${pkg.max_amount.toLocaleString()}  Pi` : 'Illimité'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">ROI potentiel:</span>
-                    <span className="font-medium">
-                      {minReturns.roi.toFixed(0)}% - {maxReturns.roi.toFixed(0)}%
-                    </span>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Durée max</p>
+                      <p className="font-semibold flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {pkg.max_duration_days} jours
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Niveau requis</p>
+                      <Badge variant="outline" className="text-xs">
+                        {pkg.level}
+                      </Badge>
+                    </div>
                   </div>
-                </div>
 
-                {/* Fees removed: backend no longer exposes these fields */}
+                  {/* Returns Preview */}
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Retour quotidien min:</span>
+                      <span className="font-medium text-green-600">
+                        {minReturns.dailyReturn.toFixed(2)}  Pi
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">ROI potentiel:</span>
+                      <span className="font-medium">
+                        {minReturns.roi.toFixed(0)}% - {maxReturns.roi.toFixed(0)}%
+                      </span>
+                    </div>
+                  </div>
 
-                <Button 
-                  onClick={() => handleSelectPackage(pkg)}
-                  className="w-full pi-gradient text-white hover:pi-gradient-hover"
-                  disabled={!user || user.balance_pi < pkg.min_amount}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Investir Maintenant
-                </Button>
+                  {/* Fees removed: backend no longer exposes these fields */}
 
-                {user && user.balance_pi < pkg.min_amount && (
-                  <p className="text-xs text-destructive text-center">
-                    Solde insuffisant (minimum: {pkg.min_amount}  Pi)
-                  </p>
-                )}
-              </CardContent>
-            </GlowCard>
-          );
-        })}
-      </div>
+                  <Button 
+                    onClick={() => handleSelectPackage(pkg)}
+                    className="w-full pi-gradient text-white hover:pi-gradient-hover"
+                    disabled={!user || user.balance_pi < pkg.min_amount}
+                    data-testid={`invest-cta-${pkg.id}`}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Investir Maintenant
+                  </Button>
+
+                  {user && user.balance_pi < pkg.min_amount && (
+                    <p className="text-xs text-destructive text-center">
+                      Solde insuffisant (minimum: {pkg.min_amount}  Pi)
+                    </p>
+                  )}
+                </CardContent>
+              </GlowCard>
+            );
+          })}
+        </div>
+      )}
 
       {/* Deposit Modal */}
       <DepositModal open={showDepositModal} onOpenChange={setShowDepositModal} />
 
       {/* Investment Modal */}
       <Dialog open={showInvestModal} onOpenChange={(open) => !open && resetModal()}>
+        {/* data-testids in modal for e2e */}
         <DialogContent className="sm:max-w-md">
           {investment.step === 1 && investment.selectedPackage && (
             <>
@@ -389,6 +414,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                     disabled={investment.amount < investment.selectedPackage.min_amount || 
                              (!user || investment.amount > user.balance_pi)}
                     className="flex-1 pi-gradient text-white"
+                    data-testid="continue-invest-btn"
                   >
                     Continuer
                   </Button>
@@ -452,6 +478,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
                     onClick={handleInvest}
                     disabled={investment.isLoading}
                     className="flex-1 pi-gradient text-white"
+                    data-testid="confirm-invest-btn"
                   >
                     {investment.isLoading ? (
                       <div className="flex items-center gap-2">

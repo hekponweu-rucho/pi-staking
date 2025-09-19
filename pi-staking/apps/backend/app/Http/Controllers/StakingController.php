@@ -29,10 +29,20 @@ class StakingController extends Controller
         $user = $request->user();
         $packages = $this->stakingService->getAvailablePackages($user);
 
+        $resource = \App\Http\Resources\StakingPackageResource::collection($packages);
+
+        \App\Support\StructuredLogger::event('staking_packages_fetched', [
+            'user_id' => $user->id,
+            'outcome' => 'success',
+            'meta' => [
+                'count' => $packages->count(),
+            ],
+        ]);
+
         return response()->json([
             'success' => true,
             'data' => [
-                'packages' => $packages,
+                'packages' => $resource,
                 'user_level' => $user->current_level,
                 'level_info' => $this->userLevelService->getLevelProgress($user),
             ]
@@ -102,6 +112,17 @@ class StakingController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
+            StructuredLogger::event('investment_failed', [
+                'user_id' => $user->id,
+                'outcome' => 'error',
+                'amount' => (float) ($request->amount ?? 0),
+                'meta' => [
+                    'package_id' => $request->staking_package_id,
+                    'source' => $request->source,
+                    'error_message' => $e->getMessage(),
+                ],
+            ], 'error');
+
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage()
