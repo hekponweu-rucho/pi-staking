@@ -21,6 +21,9 @@ import {
   Target,
   Clock
 } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 interface StakingPackagesProps {
   onInvestmentSuccess?: () => void;
@@ -134,9 +137,8 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
   if (isLoading) {
     return (
       <GlowCard>
-        <CardContent className="flex items-center justify-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin mr-4" />
-          <span>Chargement des packages de staking...</span>
+        <CardContent className="p-8">
+          <LoadingSpinner label="Chargement des packages de staking..." />
         </CardContent>
       </GlowCard>
     );
@@ -144,14 +146,7 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
 
   if (error && !showInvestModal) {
     return (
-      <GlowCard>
-        <CardContent className="text-center p-8">
-          <p className="text-destructive mb-4">{error}</p>
-          <Button variant="outline" onClick={fetchPackages}>
-            Réessayer
-          </Button>
-        </CardContent>
-      </GlowCard>
+      <ErrorState message={error} onRetry={fetchPackages} />
     );
   }
 
@@ -170,6 +165,14 @@ export function StakingPackages({ onInvestmentSuccess }: StakingPackagesProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {packages.length === 0 && (
+          <EmptyState
+            title="Aucun package disponible"
+            message="Revenez plus tard ou vérifiez vos permissions de compte."
+            actionLabel="Actualiser"
+            onAction={fetchPackages}
+          />
+        )}
         {packages.map(pkg => {
           const minReturns = calculateReturns(pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);
           const maxReturns = calculateReturns(pkg.max_amount || pkg.min_amount, pkg.daily_rate, pkg.max_duration_days);

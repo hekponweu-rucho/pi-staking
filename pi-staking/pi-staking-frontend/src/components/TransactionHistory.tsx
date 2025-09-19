@@ -17,6 +17,9 @@ import {
   Download,
   RefreshCw
 } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { EmptyState } from '@/components/ui/EmptyState';
 
 interface Transaction {
   id: number;
@@ -255,20 +258,14 @@ export function TransactionHistory() {
 
           {/* Loading State */}
           {isLoading && (
-            <div className="flex items-center justify-center p-8">
-              <Loader2 className="h-8 w-8 animate-spin mr-4" />
-              <span>Chargement des transactions...</span>
+            <div className="p-8">
+              <LoadingSpinner label="Chargement des transactions..." />
             </div>
           )}
 
           {/* Error State */}
           {error && (
-            <div className="text-center p-8">
-              <p className="text-destructive mb-4">{error}</p>
-              <Button variant="outline" onClick={handleRefresh}>
-                Réessayer
-              </Button>
-            </div>
+            <ErrorState message={error} onRetry={handleRefresh} inline />
           )}
 
           {/* Transactions Table */}
@@ -288,8 +285,8 @@ export function TransactionHistory() {
                 <TableBody>
                   {transactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center p-8 text-muted-foreground">
-                        Aucune transaction trouvée
+                      <TableCell colSpan={6} className="text-center p-8">
+                        <EmptyState inline title="Aucune transaction" message="Vos opérations apparaîtront ici." actionLabel="Actualiser" onAction={handleRefresh} />
                       </TableCell>
                     </TableRow>
                   ) : (

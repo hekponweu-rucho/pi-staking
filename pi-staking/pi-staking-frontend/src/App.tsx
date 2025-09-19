@@ -37,18 +37,6 @@ function Dashboard() {
     checkAdmin();
   }, [user]);
 
-  // Si l'utilisateur n'a pas vérifié son email, le rediriger
-  if (user && !checkEmailVerified()) {
-    return (
-      <EmailVerificationPage 
-        email={user.email}
-        type="registration"
-        onBack={() => logout()}
-        onVerified={() => window.location.reload()}
-      />
-    );
-  }
-
   // Si l'utilisateur est admin, afficher le dashboard admin
   if (isAdmin) {
     return <AdminApp />;
@@ -63,22 +51,26 @@ function Dashboard() {
 }
 
 function AppContent() {
-  const { state, checkEmailVerified } = useAuth();
+  const { state } = useAuth();
   const { isAuthenticated, isLoading, user } = state;
   const [appState, setAppState] = useState<AppState>('landing');
+
+  // Détecter un lien de vérification par URL (token + hash)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const hash = params.get('hash');
+    if (token && hash) {
+      setAppState('email-verification');
+    }
+  }, []);
 
   // Gérer les transitions entre les états
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated && user) {
-        // Vérifier si l'email est vérifié
-        if (!checkEmailVerified()) {
-          setAppState('email-verification');
-        } else {
-          setAppState('dashboard');
-        }
+        setAppState('dashboard');
       } else {
-        // Si pas authentifié, rester sur landing sauf si on demande explicitement l'auth
         if (appState === 'auth') {
           setAppState('auth');
         } else {
@@ -86,7 +78,7 @@ function AppContent() {
         }
       }
     }
-  }, [isAuthenticated, isLoading, appState, user, checkEmailVerified]);
+  }, [isAuthenticated, isLoading, appState, user]);
 
   if (isLoading) {
     return (
@@ -116,10 +108,10 @@ function AppContent() {
     
     case 'email-verification':
       return (
-        <EmailVerificationPage 
+        <EmailVerificationPage
           email={user?.email || ''}
           type="registration"
-          onBack={() => setAppState('landing')}
+          onBack={() => setAppState('dashboard')}
           onVerified={() => setAppState('dashboard')}
         />
       );
