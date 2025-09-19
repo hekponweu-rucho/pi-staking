@@ -129,13 +129,13 @@ class StakingService
     /**
      * Obtenir les packages disponibles pour un utilisateur
      */
-    public function getAvailablePackages(User $user): array
+    public function getAvailablePackages(User $user): \Illuminate\Support\Collection
     {
         $packages = Cache::remember('staking:packages:active', 300, fn() => StakingPackage::active()->ordered()->get());
         
         return $packages->filter(function ($package) use ($user) {
             return $package->canBeUsedBy($user);
-        })->values()->toArray();
+        })->values();
     }
 
     /**

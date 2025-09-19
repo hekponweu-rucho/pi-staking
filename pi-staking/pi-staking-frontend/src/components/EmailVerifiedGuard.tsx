@@ -120,6 +120,7 @@ export function EmailVerifiedGuard({
             onClick={handleResendEmail}
             disabled={isResending || resendCooldown > 0}
             variant="outline"
+            data-testid="resend-verification-btn"
             className="border-yellow-500 text-yellow-700 hover:bg-yellow-50 dark:text-yellow-300 dark:hover:bg-yellow-900/20"
           >
             {isResending ? (

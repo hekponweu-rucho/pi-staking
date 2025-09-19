@@ -2,38 +2,39 @@ import api from '../lib/api-enhanced';
 
 // Types pour le staking
 export interface StakingPackage {
-  id: string;
+  id: number | string;
   name: string;
   description: string | null;
-  level_requirement: 'discovery' | 'bronze' | 'silver' | 'gold' | 'diamond' | null;
+  level: 'discovery' | 'bronze' | 'silver' | 'gold' | 'diamond' | null;
   daily_rate: number;
   min_amount: number;
   max_amount: number | null;
-  duration_days: number;
+  duration_days?: number;
+  max_duration_days?: number;
   is_discovery_bonus: boolean;
   is_active: boolean;
   max_concurrent: number | null;
   features: any | null; // JSON
   sort_order: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Investment {
-  id: string;
-  user_id: string;
-  staking_package_id: string;
+  id: number | string;
+  user_id: number | string;
+  staking_package_id: number | string;
   amount: number;
   daily_rate: number;
   total_earned: number;
   total_claimed: number;
-  status: 'active' | 'completed' | 'cancelled';
-  started_at: string;
-  ends_at: string;
-  next_claim_at: string;
-  created_at: string;
-  updated_at: string;
-  package?: StakingPackage;
+  status: 'active' | 'completed' | 'cancelled' | 'paused';
+  start_at?: string;
+  end_at?: string | null;
+  next_claim_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  package?: StakingPackage | null;
 }
 
 export interface PerformanceData {
@@ -58,7 +59,13 @@ class StakingService {
   async getPackages(): Promise<{ success: boolean; data: StakingPackage[]; message?: string }> {
     try {
       const response = await api.get('/staking/packages');
-      return response.data;
+      const payload = response.data;
+      if (payload?.success) {
+        const raw = payload.data?.packages?.data ?? payload.data?.packages ?? payload.data ?? [];
+        const packages: StakingPackage[] = Array.isArray(raw) ? raw : [];
+        return { success: true, data: packages };
+      }
+      return { success: false, data: [], message: payload?.message || 'Impossible de charger les packages' };
     } catch (error: any) {
       console.error('Erreur lors de la récupération des packages:', error);
       return {
@@ -96,7 +103,28 @@ class StakingService {
   async getUserInvestments(): Promise<{ success: boolean; data: Investment[]; message?: string }> {
     try {
       const response = await api.get('/staking/investments');
-      return response.data;
+      const payload = response.data;
+      if (payload?.success) {
+        const raw = payload.data?.investments?.data ?? payload.data?.investments ?? [];
+        const mapped: Investment[] = (Array.isArray(raw) ? raw : []).map((it: any) => ({
+          id: it.id,
+          user_id: it.user_id,
+          staking_package_id: it.staking_package_id,
+          amount: Number(it.amount ?? 0),
+          daily_rate: Number(it.daily_rate ?? 0),
+          total_earned: Number(it.total_earned ?? 0),
+          total_claimed: Number(it.total_claimed ?? 0),
+          status: it.status,
+          start_at: it.start_at || it.started_at,
+          end_at: it.end_at || it.ends_at,
+          next_claim_at: it.next_claim_at ?? null,
+          created_at: it.created_at,
+          updated_at: it.updated_at,
+          package: it.package || it.staking_package || null,
+        }));
+        return { success: true, data: mapped };
+      }
+      return { success: false, data: [], message: payload?.message || 'Impossible de charger les investissements' };
     } catch (error: any) {
       console.error('Erreur lors de la récupération des investissements:', error);
       return {
