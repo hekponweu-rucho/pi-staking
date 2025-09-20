@@ -20,6 +20,8 @@ export interface User {
   id: number;
   username: string;
   email: string;
+  first_name?: string;
+  last_name?: string;
   email_verified_at: string | null;
   
   // Authentication & Authorization

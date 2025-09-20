@@ -118,8 +118,10 @@ class AuthController extends Controller
         $user = Auth::user();
 
         $validator = Validator::make($request->all(), [
-            'name'  => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
         ]);
 
         if ($validator->fails()) {
@@ -215,6 +217,8 @@ class AuthController extends Controller
     public function register(Request $request, NotificationService $notifications): JsonResponse
     {
         $validator = Validator::make($request->all(), [
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
@@ -246,6 +250,8 @@ class AuthController extends Controller
         }
 
         $user = User::create([
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'],
             'username' => $data['username'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),

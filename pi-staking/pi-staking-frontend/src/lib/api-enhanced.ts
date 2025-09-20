@@ -8,7 +8,7 @@ const SANCTUM_BASE_URL = config.api.baseUrl;
 // Instance Axios principale
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -19,7 +19,7 @@ export const apiClient = axios.create({
 // Instance pour Sanctum CSRF
 export const sanctumClient = axios.create({
   baseURL: SANCTUM_BASE_URL,
-  withCredentials: true
+  withCredentials: false
 });
 
 // Intercepteur pour gestion automatique des tokens
