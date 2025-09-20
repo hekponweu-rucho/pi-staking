@@ -118,8 +118,10 @@ class AuthController extends Controller
         $user = Auth::user();
 
         $validator = Validator::make($request->all(), [
-            'name'  => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'username' => 'nullable|string|max:255|unique:users,username,' . $user->id,
         ]);
 
         if ($validator->fails()) {
