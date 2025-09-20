@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 use App\Services\NotificationService;
+use App\Services\ReferralService;
 
 class AuthController extends Controller
 {
@@ -230,11 +231,27 @@ class AuthController extends Controller
 
         $data = $validator->validated();
 
+        $referrer = null;
+        if (!empty($data['referral_code'] ?? null)) {
+            $referrer = app(ReferralService::class)->validateReferralCode($data['referral_code']);
+            if (!$referrer) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Code de parrainage invalide',
+                    'errors' => [
+                        'referral_code' => ['Code de parrainage invalide']
+                    ]
+                ], 422);
+            }
+        }
+
         $user = User::create([
             'username' => $data['username'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'current_level' => 'bronze',
+            'referred_by' => $referrer?->id,
+            'referral_code' => app(ReferralService::class)->generateUniqueReferralCode(),
         ]);
 
         if (method_exists($user, 'assignRole')) {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,14 @@ export function AuthPage({ onBack }: AuthPageProps) {
   });
   
   const [activeTab, setActiveTab] = useState('login');
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref && !registerForm.referral_code) {
+      setRegisterForm(prev => ({ ...prev, referral_code: ref }));
+    }
+  }, [activeTab, registerForm.referral_code]);
 
   const handleBack = () => {
     if (onBack) {
