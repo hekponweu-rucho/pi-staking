@@ -23,6 +23,8 @@ export function AuthPage({ onBack }: AuthPageProps) {
   });
   
   const [registerForm, setRegisterForm] = useState({
+    first_name: '',
+    last_name: '',
     username: '',
     email: '',
     password: '',
@@ -196,6 +198,30 @@ export function AuthPage({ onBack }: AuthPageProps) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first-name">First name</Label>
+                    <Input
+                      id="first-name"
+                      type="text"
+                      placeholder="Your first name"
+                      value={registerForm.first_name}
+                      onChange={(e) => setRegisterForm(prev => ({ ...prev, first_name: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="last-name">Last name</Label>
+                    <Input
+                      id="last-name"
+                      type="text"
+                      placeholder="Your last name"
+                      value={registerForm.last_name}
+                      onChange={(e) => setRegisterForm(prev => ({ ...prev, last_name: e.target.value }))}
+                      required
+                    />
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="username">Nom d'utilisateur</Label>
                     <Input
