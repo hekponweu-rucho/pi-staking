@@ -25,6 +25,53 @@ php artisan route:clear
 php artisan config:clear
 ```
 
+API Docs (OpenAPI + Swagger)
+
+- Outil: l5-swagger (Swagger-UI + swagger-php). Les annotations sont centralisées dans `app/OpenApi` (schemas réutilisables + endpoints) et complétées par les contrôleurs.
+- Endpoints de documentation (dev):
+  - UI: /api/documentation
+  - JSON: apps/backend/storage/api-docs/openapi.json
+
+Génération locale
+
+- Installer les dépendances PHP puis générer la spec:
+  - composer install
+  - php artisan key:generate
+  - php artisan l5-swagger:generate
+- Types TypeScript: depuis la racine du projet ou le package, exécutez:
+  - pnpm -C packages/shared-types openapi:gen
+  - Le fichier généré: packages/shared-types/src/api.types.ts
+
+Conventions de réponse
+
+Toutes les réponses REST suivent l'enveloppe standard:
+
+- success: boolean
+- message?: string
+- data?: any
+- errors?: Record<string, string[]> (erreurs de validation)
+- code?: string (code d'erreur métier optionnel)
+
+Conventions de pagination/tri/filtre
+
+- Query params supportés de façon homogène:
+  - page (par défaut 1)
+  - per_page (par défaut 20, max 100)
+  - sort (ex: "created_at:desc"; multi-colonnes séparées par virgule)
+  - filter[champ]=valeur (ex: filter[status]=active)
+- Réponse paginée:
+  - data: T[] ou { items: T[] }
+  - meta: PaginationMeta { current_page, last_page, per_page, total, from, to, path, links }
+
+Pipeline CI
+
+- Une vérification CI s'assure que `openapi.json` est à jour par rapport aux annotations. Le job génère la spec puis compare (diff JSON canonique). En cas d'écart: échec.
+
+Intégration frontend
+
+- Les types OpenAPI sont générés via `openapi-typescript` dans `packages/shared-types/src/api.types.ts` et ré-exportés sous `ApiComponents`, `ApiPaths`, `ApiOperations`.
+- Les contexts frontend (`AuthContext`, `StakingContext`, `DashboardContext`) utilisent désormais les types générés pour les entités principales.
+
 FinOps
 
 - Politique d’arrondi centralisée via `config/finance.php`:

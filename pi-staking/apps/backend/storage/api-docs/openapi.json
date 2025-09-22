@@ -1,0 +1,15 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Pi Staking API",
+    "version": "1.0.0",
+    "description": "Documentation OpenAPI initiale. Générer à jour avec: php artisan l5-swagger:generate"
+  },
+  "servers": [
+    { "url": "/api", "description": "API base path" }
+  ],
+  "paths": {},
+  "components": {
+    "schemas": {}
+  }
+}

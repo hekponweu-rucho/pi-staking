@@ -11,7 +11,8 @@
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.9",
         "predis/predis": "^3.2",
-        "spatie/laravel-permission": "^6.21"
+        "spatie/laravel-permission": "^6.21",
+        "darkaonline/l5-swagger": "^9.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -53,6 +54,9 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
+        ],
+        "openapi:generate": [
+            "@php artisan l5-swagger:generate --all"
         ]
     },
     "extra": {

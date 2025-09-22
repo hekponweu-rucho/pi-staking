@@ -1,0 +1,46 @@
+name: OpenAPI and Types
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  openapi-and-types:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, intl, bcmath, json, curl
+          coverage: none
+      - name: Install Composer dependencies (backend)
+        working-directory: ./pi-staking/apps/backend
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp -n .env.example .env || true
+          php artisan key:generate
+      - name: Generate OpenAPI (l5-swagger)
+        working-directory: ./pi-staking/apps/backend
+        run: php artisan l5-swagger:generate --all
+      - name: Setup Node & pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@8.15.0 --activate
+      - name: Generate TS types from OpenAPI
+        run: pnpm -C pi-staking/packages/shared-types openapi:gen
+      - name: Check drift (OpenAPI spec and TS types)
+        run: |
+          git add -N pi-staking/apps/backend/storage/api-docs/openapi.json || true
+          git add -N pi-staking/packages/shared-types/src/api.types.ts || true
+          git diff --exit-code -- pi-staking/apps/backend/storage/api-docs/openapi.json pi-staking/packages/shared-types/src/api.types.ts
+      - name: Typecheck frontend (basic)
+        run: pnpm -C pi-staking/pi-staking-frontend type-check

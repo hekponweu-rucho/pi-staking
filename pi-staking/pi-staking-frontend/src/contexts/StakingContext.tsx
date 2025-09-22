@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { stakingService, StakingPackage, Investment, PerformanceData } from '../services/stakingService';
+import { stakingService, PerformanceData } from '../services/stakingService';
 import { claimsService, ClaimableInvestment, ClaimStatistics, ClaimHistory } from '../services/claimsService';
 import { useAuth } from './AuthContext';
+import type { ApiComponents } from '../../../packages/shared-types/src';
+
+type StakingPackage = ApiComponents['schemas']['StakingPackage'];
+type Investment = ApiComponents['schemas']['Investment'];
 
 // Types pour l'état de staking
 interface StakingState {
