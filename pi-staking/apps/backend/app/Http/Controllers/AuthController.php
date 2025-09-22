@@ -21,36 +21,62 @@ class AuthController extends Controller
     /**
      * Connexion utilisateur (email + mot de passe)
      */
-    public function login(Request $request): JsonResponse
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-        ]);
+   public function login(Request $request): JsonResponse
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required|string',
+    ]);
 
-        $user = User::where('email', $request->email)->first();
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Identifiants invalides.'
-            ], 401);
-        }
+    // Normaliser l'email
+    $email = strtolower($request->email);
 
-        if (method_exists($user, 'tokens')) {
-            $token = $user->createToken('auth_token')->plainTextToken;
-        } else {
-            $token = null;
-        }
+    $user = User::where('email', $email)->first();
 
+    // Vérification utilisateur + mot de passe
+    if (!$user || !Hash::check($request->password, $user->password)) {
         return response()->json([
-            'success' => true,
-            'message' => 'Connexion réussie.',
-            'data' => [
-                'user' => $user,
-                'token' => $token,
-            ]
-        ]);
+            'success' => false,
+            'message' => 'Identifiants invalides.'
+        ], 401);
     }
+
+    // Vérifier si le compte est actif
+    if (!$user->is_active) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Votre compte est désactivé. Contactez le support.'
+        ], 403);
+    }
+
+    // Génération du token Sanctum
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Connexion réussie.',
+        'data' => [
+            'user' => [
+                'id'            => $user->id,
+                'first_name'    => $user->first_name,
+                'last_name'     => $user->last_name,
+                'username'      => $user->username,
+                'email'         => $user->email,
+                'current_level' => $user->current_level,
+                'balance_pi'    => $user->balance_pi,
+                'bonus_balance' => $user->bonus_balance,
+                'total_invested'=> $user->total_invested,
+                'total_claimed' => $user->total_claimed,
+                'total_withdrawn'=> $user->total_withdrawn,
+                'kyc_status'    => $user->kyc_status,
+                'is_active'     => $user->is_active,
+                'created_at'    => $user->created_at,
+            ],
+            'token' => $token,
+        ]
+    ]);
+}
+
     /**
      * Mot de passe oublié : envoi du lien de réinitialisation
      */

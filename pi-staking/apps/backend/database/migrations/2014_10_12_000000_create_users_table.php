@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -22,12 +21,17 @@ return new class extends Migration
             $table->string('password');
             $table->string('referral_code')->unique()->nullable();
             $table->string('current_level')->default('bronze');
+
+            // balances & stats
             $table->decimal('balance_pi', 20, 8)->default(0);
             $table->decimal('bonus_balance', 20, 8)->default(0);
             $table->decimal('total_invested', 20, 8)->default(0);
             $table->decimal('total_claimed', 20, 8)->default(0);
+            $table->decimal('total_withdrawn', 20, 8)->default(0); // ✅ ajouté
+
             $table->enum('kyc_status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->boolean('is_active')->default(true);
+
             $table->rememberToken();
             $table->timestamps();
         });

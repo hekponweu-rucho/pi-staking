@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Appliquer Sanctum aux routes API
         $middleware->statefulApi();
     })
-    ->withSchedule(function (Schedule $schedule) {
+    ->withSchedule(function ($schedule) {
         $schedule->command('staking:process-daily-earnings')->dailyAt('02:00')->timezone(config('app.timezone'));
     })
     ->withExceptions(function (Exceptions $exceptions) {

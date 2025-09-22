@@ -199,22 +199,23 @@ export function AuthPage({ onBack }: AuthPageProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="first_name">Prénom</Label>
+                    <Label htmlFor="first-name">First name</Label>
                     <Input
-                      id="first_name"
+                      id="first-name"
                       type="text"
-                      placeholder="Votre prénom"
+                      placeholder="Your first name"
                       value={registerForm.first_name}
                       onChange={(e) => setRegisterForm(prev => ({ ...prev, first_name: e.target.value }))}
                       required
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="last_name">Nom</Label>
+                    <Label htmlFor="last-name">Last name</Label>
                     <Input
-                      id="last_name"
+                      id="last-name"
                       type="text"
-                      placeholder="Votre nom"
+                      placeholder="Your last name"
                       value={registerForm.last_name}
                       onChange={(e) => setRegisterForm(prev => ({ ...prev, last_name: e.target.value }))}
                       required
