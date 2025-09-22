@@ -432,7 +432,9 @@ class StakingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'status' => 'nullable|in:active,completed,cancelled',
-            'per_page' => 'nullable|integer|min:5|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+            'sort' => 'nullable|string',
+            'order' => 'nullable|in:asc,desc',
         ]);
 
         if ($validator->fails()) {
@@ -444,33 +446,25 @@ class StakingController extends Controller
         }
 
         $user = $request->user();
-        $perPage = $request->get('per_page', 20);
+        $perPage = \App\Support\Pagination::perPage($request);
+        [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, [
+            'created_at' => 'created_at',
+            'amount' => 'amount',
+            'status' => 'status',
+            'next_claim_at' => 'next_claim_at',
+        ], 'created_at', 'desc');
         
         $query = $user->investments()->with(['stakingPackage', 'claims']);
         
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
         }
 
-        $investments = $query->latest()->paginate($perPage);
+        $paginator = $query->orderBy($sortCol, $sortDir)
+            ->paginate($perPage)
+            ->withQueryString();
 
-        // Ajouter les informations calculées
-        $investments->getCollection()->transform(function ($investment) {
-            $investment->can_claim_now = $investment->canClaim();
-            $investment->next_claim_amount = $investment->calculateNextClaimAmount();
-            $investment->total_claimed = $investment->claims->sum('amount');
-            $investment->progress_percentage = $investment->progress_percentage;
-            $investment->remaining_days = $investment->remaining_days;
-            return $investment;
-        });
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'investments' => $investments,
-                'stats' => $this->stakingService->getUserInvestmentStats($user),
-            ]
-        ]);
+        return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\InvestmentResource::class, $request));
     }
 
     /**

@@ -360,14 +360,7 @@ Route::middleware('auth:sanctum')->group(function () {
         });
         
         // Gestion des packages
-        Route::get('/packages', function() {
-            $packages = \App\Models\StakingPackage::withCount('investments')
-                ->with(['investments' => function($query) {
-                    $query->where('status', 'active');
-                }])
-                ->get();
-            return response()->json(['success' => true, 'data' => $packages]);
-        });
+        Route::get('/packages', [AdminController::class, 'listPackages']);
         Route::post('/packages', function() {
             $validated = request()->validate([
                 'name' => 'required|string|max:255',

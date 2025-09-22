@@ -252,9 +252,11 @@ class ClaimController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'investment_id' => 'nullable|integer|exists:investments,id',
-            'per_page' => 'nullable|integer|min:5|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'sort' => 'nullable|string',
+            'order' => 'nullable|in:asc,desc',
         ]);
 
         if ($validator->fails()) {
@@ -266,13 +268,16 @@ class ClaimController extends Controller
         }
 
         $user = $request->user();
-        $perPage = $request->get('per_page', 20);
+        $perPage = \App\Support\Pagination::perPage($request);
+        [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, [
+            'created_at' => 'created_at',
+            'final_amount' => 'final_amount',
+        ], 'created_at', 'desc');
         
         $query = $user->claims()->with(['investment.stakingPackage']);
 
-        // Filtrer par investissement si spécifié
-        if ($request->has('investment_id')) {
-            $investmentId = $request->investment_id;
+        if ($request->filled('investment_id')) {
+            $investmentId = (int) $request->input('investment_id');
             
             // Vérifier que l'investissement appartient à l'utilisateur
             if (!$user->investments()->where('id', $investmentId)->exists()) {
@@ -286,23 +291,19 @@ class ClaimController extends Controller
         }
 
         // Filtrer par dates si spécifiées
-        if ($request->has('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->input('start_date'));
         }
         
-        if ($request->has('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->input('end_date'));
         }
 
-        $claims = $query->latest()->paginate($perPage);
+        $paginator = $query->orderBy($sortCol, $sortDir)
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'claims' => $claims,
-                'stats' => $this->computeClaimStats($user),
-            ]
-        ]);
+        return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\ClaimResource::class, $request));
     }
 
     public function getClaimStatistics(Request $request): JsonResponse

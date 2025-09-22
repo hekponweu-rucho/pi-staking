@@ -23,6 +23,35 @@ class AdminController extends Controller
         $this->middleware('auth:sanctum');
     }
 
+    public function listPackages(Request $request): JsonResponse
+    {
+        $perPage = \App\Support\Pagination::perPage($request);
+        [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, [
+            'name' => 'name',
+            'created_at' => 'created_at',
+            'daily_rate' => 'daily_rate',
+            'min_amount' => 'min_amount',
+            'level' => 'level',
+        ], 'created_at', 'desc');
+
+        $query = StakingPackage::query()
+            ->withCount('investments')
+            ->with(['investments' => function($q){ $q->where('status', 'active'); }]);
+
+        if (!is_null($request->query('is_active'))) {
+            $query->where('is_active', filter_var($request->query('is_active'), FILTER_VALIDATE_BOOL));
+        }
+        if ($level = $request->query('level')) {
+            $query->where('level', $level);
+        }
+
+        $paginator = $query->orderBy($sortCol, $sortDir)
+            ->paginate($perPage)
+            ->withQueryString();
+
+        return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\StakingPackageResource::class, $request));
+    }
+
     public function getDashboardStats(): JsonResponse
     {
         try {
@@ -248,14 +277,24 @@ class AdminController extends Controller
     public function getUsers(Request $request): JsonResponse
     {
         try {
-            $search = $request->get('search');
-            $level = $request->get('level');
-            $status = $request->get('status');
-            $perPage = $request->get('per_page', 20);
+            $search = $request->query('search');
+            $level = $request->query('level');
+            $status = $request->query('status');
+
+            $perPage = \App\Support\Pagination::perPage($request);
+            [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, [
+                'created_at' => 'created_at',
+                'id' => 'id',
+                'username' => 'username',
+                'email' => 'email',
+                'current_level' => 'current_level',
+                'last_activity' => 'last_activity',
+                'total_invested' => 'total_invested',
+                'total_claimed' => 'total_claimed',
+            ], 'created_at', 'desc');
 
             $query = User::with(['investments', 'claims'])
-                ->withCount(['investments', 'claims'])
-                ->orderBy('created_at', 'desc');
+                ->withCount(['investments', 'claims']);
 
             if ($search) {
                 $query->where(function($q) use ($search) {
@@ -271,40 +310,17 @@ class AdminController extends Controller
             if ($status === 'active') {
                 $query->where('last_activity', '>=', now()->subDays(30));
             } elseif ($status === 'inactive') {
-                $query->where('last_activity', '<', now()->subDays(30))
+                $query->where(function($q){
+                    $q->where('last_activity', '<', now()->subDays(30))
                       ->orWhereNull('last_activity');
+                });
             }
 
-            $users = $query->paginate($perPage);
+            $paginator = $query->orderBy($sortCol, $sortDir)
+                ->paginate($perPage)
+                ->withQueryString();
 
-            $users->getCollection()->transform(function ($user) {
-                $activeInvestments = $user->investments->where('status', 'active');
-                $totalClaimed = $user->claims->where('status', 'processed')->sum('final_amount');
-
-                return [
-                    'id' => $user->id,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'current_level' => $user->current_level,
-                    'balance_pi' => $user->balance_pi,
-                    'total_invested' => $user->total_invested,
-                    'total_claimed' => $totalClaimed,
-                    'active_investments' => $activeInvestments->count(),
-                    'investments_count' => $user->investments_count,
-                    'claims_count' => $user->claims_count,
-                    'last_activity' => $user->last_activity,
-                    'created_at' => $user->created_at,
-                    'kyc_status' => $user->kyc_status ?? 'pending',
-                    'is_active' => $user->last_activity >= now()->subDays(30),
-                    'referral_code' => $user->referral_code,
-                    'loyalty_points' => $user->loyalty_points,
-                ];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data' => $users
-            ]);
+            return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\AdminUserResource::class, $request));
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -317,21 +333,16 @@ class AdminController extends Controller
     public function getTransactions(Request $request): JsonResponse
     {
         try {
-            $type = $request->get('type');
-            $status = $request->get('status');
-            $dateFrom = $request->get('date_from');
-            $dateTo = $request->get('date_to');
-            $userId = $request->get('user_id');
-            $minAmount = $request->get('min_amount');
-            $maxAmount = $request->get('max_amount');
-            $perPage = (int) $request->get('per_page', 20);
-            $sortBy = $request->get('sort_by', 'created_at');
-            $sortDir = strtolower($request->get('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+            $type = $request->query('type');
+            $status = $request->query('status');
+            $dateFrom = $request->query('date_from');
+            $dateTo = $request->query('date_to');
+            $userId = $request->query('user_id');
+            $minAmount = $request->query('min_amount');
+            $maxAmount = $request->query('max_amount');
 
-            $allowedSort = ['created_at','amount','status','type','id'];
-            if (!in_array($sortBy, $allowedSort, true)) {
-                $sortBy = 'created_at';
-            }
+            $perPage = \App\Support\Pagination::perPage($request);
+            [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, ['created_at','amount','status','type','id'], 'created_at', 'desc');
 
             $query = Transaction::with('user');
 
@@ -357,12 +368,11 @@ class AdminController extends Controller
                 $query->where('amount', '<=', $maxAmount);
             }
 
-            $transactions = $query->orderBy($sortBy, $sortDir)->paginate($perPage);
+            $paginator = $query->orderBy($sortCol, $sortDir)
+                ->paginate($perPage)
+                ->withQueryString();
 
-            return response()->json([
-                'success' => true,
-                'data' => $transactions
-            ]);
+            return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\TransactionResource::class, $request));
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

@@ -1,0 +1,181 @@
+openapi: 3.0.3
+info:
+  title: Pi Staking API
+  version: '1.0.0'
+  description: Standardized pagination, filtering and sorting for collection endpoints
+servers:
+  - url: https://api.example.com
+paths:
+  /api/admin/users:
+    get:
+      summary: List users (admin)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: level
+          schema: { type: string, enum: [discovery, bronze, silver, gold, diamond] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAdminUser'
+  /api/staking/investments:
+    get:
+      summary: List current user's investments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, completed, cancelled] }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInvestments'
+  /api/transactions:
+    get:
+      summary: List current user's transactions
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Sort'
+        - $ref: '#/components/parameters/Order'
+        - in: query
+          name: type
+          schema: { type: string, enum: [deposit, withdrawal, investment, claim, bonus, referral] }
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, completed, rejected, cancelled] }
+        - in: query
+          name: start_date
+          schema: { type: string, format: date }
+        - in: query
+          name: end_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTransactions'
+components:
+  parameters:
+    Page:
+      in: query
+      name: page
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      in: query
+      name: per_page
+      description: Default 20, max 100
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Sort:
+      in: query
+      name: sort
+      description: Whitelisted field per endpoint
+      schema: { type: string }
+    Order:
+      in: query
+      name: order
+      schema: { type: string, enum: [asc, desc], default: desc }
+  schemas:
+    PaginatedMeta:
+      type: object
+      properties:
+        current_page: { type: integer }
+        per_page: { type: integer }
+        total: { type: integer }
+        last_page: { type: integer }
+    PaginatedLinks:
+      type: object
+      properties:
+        next: { type: string, nullable: true }
+        prev: { type: string, nullable: true }
+    AdminUser:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        email: { type: string }
+        current_level: { type: string }
+        balance_pi: { type: number, format: float }
+        total_invested: { type: number, format: float }
+        total_claimed: { type: number, format: float }
+        active_investments: { type: integer }
+        investments_count: { type: integer, nullable: true }
+        claims_count: { type: integer, nullable: true }
+        last_activity: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        kyc_status: { type: string }
+        is_active: { type: boolean }
+        referral_code: { type: string, nullable: true }
+        loyalty_points: { type: integer, nullable: true }
+    Transaction:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        type: { type: string }
+        category: { type: string, nullable: true }
+        amount: { type: number, format: float }
+        status: { type: string }
+        reference_id: { type: string, nullable: true }
+        transaction_hash: { type: string, nullable: true }
+        description: { type: string, nullable: true }
+        processed_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        metadata: { type: object, additionalProperties: true }
+    Investment:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        staking_package_id: { type: integer }
+        amount: { type: number }
+        daily_rate: { type: number }
+        status: { type: string }
+        next_claim_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    PaginatedAdminUser:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AdminUser' }
+        meta: { $ref: '#/components/schemas/PaginatedMeta' }
+        links: { $ref: '#/components/schemas/PaginatedLinks' }
+    PaginatedTransactions:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Transaction' }
+        meta: { $ref: '#/components/schemas/PaginatedMeta' }
+        links: { $ref: '#/components/schemas/PaginatedLinks' }
+    PaginatedInvestments:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Investment' }
+        meta: { $ref: '#/components/schemas/PaginatedMeta' }
+        links: { $ref: '#/components/schemas/PaginatedLinks' }

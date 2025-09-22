@@ -181,9 +181,11 @@ class TransactionController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => 'nullable|in:deposit,withdrawal,investment,claim,bonus,referral',
             'status' => 'nullable|in:pending,completed,rejected,cancelled',
-            'per_page' => 'nullable|integer|min:5|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'sort' => 'nullable|string',
+            'order' => 'nullable|in:asc,desc',
         ]);
 
         if ($validator->fails()) {
@@ -195,7 +197,13 @@ class TransactionController extends Controller
         }
 
         $user = $request->user();
-        $perPage = $request->get('per_page', 20);
+        $perPage = \App\Support\Pagination::perPage($request);
+        [$sortCol, $sortDir] = \App\Support\Pagination::sort($request, [
+            'created_at' => 'created_at',
+            'amount' => 'amount',
+            'status' => 'status',
+            'type' => 'type',
+        ], 'created_at', 'desc');
         
         $query = $user->transactions()->with([
             'investment.stakingPackage',
@@ -203,31 +211,27 @@ class TransactionController extends Controller
         ]);
 
         // Appliquer les filtres
-        if ($request->has('type')) {
-            $query->where('type', $request->type);
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
         }
         
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
         }
         
-        if ($request->has('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->input('start_date'));
         }
         
-        if ($request->has('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->input('end_date'));
         }
 
-        $transactions = $query->latest()->paginate($perPage);
+        $paginator = $query->orderBy($sortCol, $sortDir)
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'transactions' => $transactions->items(),
-                'summary' => $this->getTransactionSummary($user),
-            ]
-        ]);
+        return response()->json(\App\Support\Pagination::envelope($paginator, \App\Http\Resources\TransactionResource::class, $request));
     }
 
     /**
