@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\WithdrawalStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +32,9 @@ class WithdrawalRequest extends Model
         'request_ip',
         'user_agent',
         'security_checks',
+            'withdrawal_address',
+            'note',
+            'requested_at',
     ];
 
     protected $casts = [
@@ -39,8 +43,10 @@ class WithdrawalRequest extends Model
         'net_amount' => 'decimal:8',
         'reviewed_at' => 'datetime',
         'processed_at' => 'datetime',
+        'requested_at' => 'datetime',
         'is_confirmed' => 'boolean',
         'security_checks' => 'array',
+        'status' => WithdrawalStatus::class,
     ];
 
     public function user(): BelongsTo

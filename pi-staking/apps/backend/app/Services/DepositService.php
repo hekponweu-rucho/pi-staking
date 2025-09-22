@@ -336,7 +336,7 @@ class DepositService
             $beforeBalance = $user->balance_pi;
             $user->increment('balance_pi', $amountF);
 
-            Transaction::create([
+            $txn = Transaction::create([
                 'user_id' => $user->id,
                 'type' => 'deposit',
                 'category' => 'deposit',
@@ -346,6 +346,7 @@ class DepositService
                 'status' => 'completed',
                 'reference_id' => (string) $deposit->id,
                 'transaction_hash' => $txHash,
+                'idempotency_key' => 'deposit:' . $txHash,
                 'description' => 'Dépôt Pi confirmé',
                 'processed_at' => now(),
             ]);
@@ -353,6 +354,7 @@ class DepositService
             $this->ledgerService->moveExternalToUser($user->id, 'principal', $amountF, 'deposit', (string) $deposit->id, [
                 'address_id' => $addr->id,
                 'tx_hash' => $txHash,
+                'transaction_id' => $txn->id,
             ]);
 
             Log::channel('daily')->info('Dépôt confirmé', [

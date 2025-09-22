@@ -40,3 +40,15 @@ FinOps
     - Retrait (réservation): `principal -> pending_withdrawal`, (approbation): `pending_withdrawal -> external`, (annulation/rejet): `pending_withdrawal -> principal`
 - Réconciliation: `php artisan finance:reconcile-users --dry-run` reconstruit les soldes à partir du ledger et compare aux colonnes `users`. Le solde `balance_pi` est dérivé comme `principal + pending_withdrawal`.
 
+Staging DB
+
+- Normalisation du schéma et intégrité (PostgreSQL):
+  - Checks: `investments.amount > 0`, `investments.daily_rate BETWEEN 0 AND 1`, `staking_packages.daily_rate BETWEEN 0 AND 1`, `staking_packages.duration_days > 0`, `claims.final_amount > 0` (avec `base_amount >= 0`, `bonus_amount >= 0`), `withdrawal_requests.amount > 0`, `deposits.amount IS NULL OR amount > 0`, `ledger_entries.delta <> 0`.
+  - Enums PG: colonnes `status`/`type`/`source` converties en enums natifs (`withdrawal_status`, `investment_status`, `investment_source`, `transaction_type`, `transaction_status`, `claim_status`, `ledger_account`).
+  - Unicité: `transactions.idempotency_key` (nullable, unique), `deposits.tx_hash` (unique), `ledger_entries (transaction_id, line_no)` unique (partiel pour `transaction_id IS NOT NULL`), `verification_codes (user_id, action, code)` unique.
+  - Indexes: `investments(user_id,status)`, `(status,end_at)`, `next_claim_at`; `transactions(user_id,created_at)`; `claims(user_id,created_at)`; `withdrawal_requests(user_id,status)`.
+- Dédoublonnage `withdrawal_requests`:
+  - Migration de correction unique qui aligne la table, ajoute `withdrawal_address`, `note`, `requested_at` et applique les contraintes et index idempotents.
+- Idempotency applicative:
+  - `transactions.idempotency_key` peuplée au besoin (`deposit:<tx_hash>`, `withdrawal:reserve:<id>`, `withdrawal:execute:<id>`). Le service Ledger enregistre désormais `transaction_id`/`line_no` pour les mouvements debit/credit.
+

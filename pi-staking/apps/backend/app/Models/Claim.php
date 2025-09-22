@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ClaimStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,7 @@ class Claim extends Model
         'streak_bonus' => 'decimal:4',
         'streak_days' => 'integer',
         'calculation_details' => 'array',
+        'status' => ClaimStatus::class,
     ];
 
     // Relations

@@ -112,6 +112,7 @@ class AdminWithdrawalController extends Controller
                         'balance_after' => $beforeBalance - $withdrawal->amount,
                         'status' => 'pending',
                         'withdrawal_request_id' => $withdrawal->id,
+                        'idempotency_key' => 'withdrawal:execute:' . $withdrawal->id,
                         'description' => 'Retrait approuvé manuellement',
                     ]);
                 } else {
