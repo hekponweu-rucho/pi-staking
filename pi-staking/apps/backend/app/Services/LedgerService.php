@@ -14,6 +14,8 @@ class LedgerService
         $userId = $user instanceof User ? $user->id : $user;
         return LedgerEntry::create([
             'user_id' => $userId,
+            'transaction_id' => $meta['transaction_id'] ?? null,
+            'line_no' => isset($meta['side']) ? ($meta['side'] === 'debit' ? 1 : 2) : ($meta['line_no'] ?? null),
             'account' => $account,
             'delta' => Money::round($delta),
             'currency' => 'PI',

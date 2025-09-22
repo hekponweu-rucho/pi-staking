@@ -190,8 +190,8 @@ class AdminDepositController extends Controller
                 'balance_before' => $beforeBalance,
                 'balance_after' => $beforeBalance + $amount,
                 'status' => 'completed',
-                // reference_id auto-généré
                 'transaction_hash' => $validated['tx_hash'],
+                'idempotency_key' => 'deposit:' . $validated['tx_hash'],
                 'description' => 'Confirmation manuelle du dépôt par admin',
                 'processed_at' => now(),
                 'processed_by' => $admin->id,

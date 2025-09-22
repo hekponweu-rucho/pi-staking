@@ -109,6 +109,7 @@ class TransactionController extends Controller
                     'balance_after' => $user->balance_pi,
                     'status' => 'pending',
                     'withdrawal_request_id' => $withdrawalRequest->id,
+                    'idempotency_key' => 'withdrawal:reserve:' . $withdrawalRequest->id,
                     'description' => 'Demande de retrait (réservation) - ' . $amount . ' Pi',
                     'metadata' => [
                         'reserved_amount' => $amount,

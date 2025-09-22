@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\InvestmentSource;
+use App\Enums\InvestmentStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +51,8 @@ class Investment extends Model
         'has_bonus_applied' => 'boolean',
         'bonus_multiplier' => 'decimal:4',
         'metadata' => 'array',
+        'status' => InvestmentStatus::class,
+        'source' => InvestmentSource::class,
     ];
 
     // Relations
