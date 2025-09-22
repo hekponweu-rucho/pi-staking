@@ -14,6 +14,18 @@ class UserSecurityLog extends Model
         'action',
         'ip_address',
         'user_agent',
+        'location',
+        'device_type',
+        'metadata',
+        'risk_score',
+        'status',
+    ];
+
+    protected $casts = [
+        'metadata' => 'array',
+        'risk_score' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function user()
