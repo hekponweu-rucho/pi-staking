@@ -5,13 +5,13 @@ export const API_BASE_URL = (config.api.baseUrl || import.meta.env.VITE_API_BASE
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'X-Requested-With': 'XMLHttpRequest'
   },
-  timeout: 10000
+  timeout: config.api.timeout
 });
 
 apiClient.interceptors.request.use((cfg) => {
